@@ -14,10 +14,13 @@
 
 #include <list>
 #include <mutex>  // NOLINT
+#include <unordered_map>
+#include <utility>
 #include <vector>
 
 #include "buffer/replacer.h"
 #include "common/config.h"
+#include "common/logger.h"
 
 namespace bustub {
 
@@ -30,7 +33,7 @@ class LRUReplacer : public Replacer {
    * Create a new LRUReplacer.
    * @param num_pages the maximum number of pages the LRUReplacer will be required to store
    */
-  explicit LRUReplacer(size_t num_pages);
+  explicit LRUReplacer(size_t num_pages);  //阻止隐式转换
 
   /**
    * Destroys the LRUReplacer.
@@ -43,10 +46,25 @@ class LRUReplacer : public Replacer {
 
   void Unpin(frame_id_t frame_id) override;
 
+  void Flush(frame_id_t frame_id);
+
   size_t Size() override;
 
  private:
   // TODO(student): implement me!
+
+  bool IsExist(frame_id_t frame_id) const;
+  bool Put(frame_id_t frame_id);
+  void Remove(frame_id_t frame_id);
+
+  using LinkList = std::list<frame_id_t>;
+  using HashTable = std::unordered_map<frame_id_t, LinkList::const_iterator>;
+  /**记录maximum number of pages*/
+  size_t num_pages_;
+  /**双向链表*/
+  LinkList list_{};
+  /**HashTable*/
+  HashTable hash_table_{};
 };
 
 }  // namespace bustub

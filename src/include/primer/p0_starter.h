@@ -41,7 +41,7 @@ class Matrix {
   //所以我们还是要在父类的构造函数中进行一些成员的初始化
   Matrix(int rows, int cols) : rows_(rows), cols_(cols) {
     this->linear_ = new T[rows * cols];
-    if (this->linear_ == NULL) {
+    if (this->linear_ == nullptr) {
       LOG_ERROR("new linear error!");
     }
   }
@@ -256,7 +256,8 @@ class RowMatrixOperations {
     if (matrixA->GetRowCount() != matrixB->GetRowCount() || matrixB->GetColumnCount() != matrixA->GetColumnCount()) {
       return std::unique_ptr<RowMatrix<T>>(nullptr);
     }
-    int rows = matrixA->GetRowCount(), cols = matrixA->GetColumnCount();
+    int rows = matrixA->GetRowCount();
+    int cols = matrixA->GetColumnCount();
     auto res = std::make_unique<RowMatrix<T>>(rows, cols);
     for (int i = 0; i < rows; ++i) {
       for (int j = 0; j < cols; ++j) {
@@ -279,16 +280,18 @@ class RowMatrixOperations {
     if (matrixA->GetColumnCount() != matrixB->GetRowCount()) {
       return std::unique_ptr<RowMatrix<T>>(nullptr);
     }
-    int rows = matrixA->GetRowCount(), cols = matrixB->GetColumnCount();
+    int rows = matrixA->GetRowCount();
+    int cols = matrixB->GetColumnCount();
     auto res = std::make_unique<RowMatrix<T>>(rows, cols);
     for (int i = 0; i < rows; ++i) {
       for (int j = 0; j < cols; ++j) {
-        T sum;
+        T sum{};
         for (int z = 0; z < matrixA->GetColumnCount(); ++z) {
-          if (z == 0)
+          if (z == 0) {
             sum = matrixA->GetElement(i, z) * matrixB->GetElement(z, j);
-          else
+          } else {
             sum += matrixA->GetElement(i, z) * matrixB->GetElement(z, j);
+          }
         }
         res->SetElement(i, j, sum);
       }
