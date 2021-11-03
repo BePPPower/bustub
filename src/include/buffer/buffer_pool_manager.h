@@ -27,6 +27,8 @@ namespace bustub {
  * BufferPoolManager reads disk pages to and from its internal buffer pool.
  */
 class BufferPoolManager {
+  friend class ParallelBufferPoolManager;
+
  public:
   enum class CallbackType { BEFORE, AFTER };
   using bufferpool_callback_fn = void (*)(enum CallbackType, const page_id_t page_id);

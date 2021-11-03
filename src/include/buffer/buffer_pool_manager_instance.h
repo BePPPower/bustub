@@ -143,6 +143,13 @@ class BufferPoolManagerInstance : public BufferPoolManager {
   /** List of free pages. */
   std::list<frame_id_t> free_list_;
   /** This latch protects shared data structures. We recommend updating this comment to describe what it protects. */
-  std::mutex latch_;
+  std::mutex free_list_latch_;
+  std::mutex page_table_latch_;
+
+ private:
+  bool GetFrameFromFreeList(frame_id_t *new_frame_id);
+  void PutFrameToFreeList(frame_id_t frame_id);
+  bool GetAnFrame(frame_id_t *frame_id);
+  void ResetFrameMetadata(const frame_id_t frame_id, page_id_t page_id);
 };
 }  // namespace bustub

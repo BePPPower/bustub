@@ -46,14 +46,14 @@ class LRUReplacer : public Replacer {
 
   void Unpin(frame_id_t frame_id) override;
 
-  void Flush(frame_id_t frame_id);
+  // void Flush(frame_id_t frame_id);
 
   size_t Size() override;
 
  private:
   // TODO(student): implement me!
 
-  bool IsExist(frame_id_t frame_id) const;
+  bool IsExist(frame_id_t frame_id);
   bool Put(frame_id_t frame_id);
   void Remove(frame_id_t frame_id);
 
@@ -65,6 +65,9 @@ class LRUReplacer : public Replacer {
   LinkList list_{};
   /**HashTable*/
   HashTable hash_table_{};
+
+  std::mutex list_latch_;
+  std::mutex hash_table_latch_;
 };
 
 }  // namespace bustub
