@@ -20,7 +20,7 @@ LRUReplacer::~LRUReplacer() = default;
 
 bool LRUReplacer::Victim(frame_id_t *frame_id) {
   list_latch_.lock();
-  if (list_.size() > 0) {
+  if (!list_.empty()) {
     *frame_id = list_.front();
     list_latch_.unlock();
     Remove(*frame_id);
@@ -41,9 +41,8 @@ void LRUReplacer::Pin(frame_id_t frame_id) {
 void LRUReplacer::Unpin(frame_id_t frame_id) {
   if (this->IsExist(frame_id)) {
     return;
-  } else {
-    this->Put(frame_id);
   }
+  this->Put(frame_id);
 }
 
 bool LRUReplacer::IsExist(frame_id_t frame_id) {

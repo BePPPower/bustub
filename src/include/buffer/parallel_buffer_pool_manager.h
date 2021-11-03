@@ -39,7 +39,7 @@ class ParallelBufferPoolManager : public BufferPoolManager {
    */
   ~ParallelBufferPoolManager() override;
 
-  //这个函数应该是获取BPI的个数而不是bufferpool个数
+  // 这个函数应该是获取BPI的个数而不是bufferpool个数
   /** @return size of the buffer pool */
   size_t GetPoolSize() override;
 
@@ -93,8 +93,7 @@ class ParallelBufferPoolManager : public BufferPoolManager {
 
  private:
   const size_t num_instances_;
-  const size_t pool_size_;
   size_t start_search_index_ = 0;
-  BufferPoolManagerInstance *buffer_pool_instances_;  // TODO 这里类型可不可以是BufferPoolManager
+  BufferPoolManagerInstance *buffer_pool_instances_;  // TODO(ftw) 这里类型可不可以是BufferPoolManager
 };
 }  // namespace bustub

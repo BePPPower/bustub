@@ -16,7 +16,7 @@ namespace bustub {
 
 ParallelBufferPoolManager::ParallelBufferPoolManager(size_t num_instances, size_t pool_size, DiskManager *disk_manager,
                                                      LogManager *log_manager)
-    : num_instances_(num_instances), pool_size_(pool_size), start_search_index_(0) {
+    : num_instances_(num_instances) {
   // Allocate and create individual BufferPoolManagerInstances
   std::allocator<BufferPoolManagerInstance> alloca;
   buffer_pool_instances_ = alloca.allocate(num_instances);
@@ -44,7 +44,7 @@ size_t ParallelBufferPoolManager::GetPoolSize() {
 
 BufferPoolManager *ParallelBufferPoolManager::GetBufferPoolManager(page_id_t page_id) {
   // Get BufferPoolManager responsible for handling given page id. You can use this method in your other methods.
-  int buffer_pool_instances_index = page_id % num_instances_;
+  size_t buffer_pool_instances_index = page_id % num_instances_;
   return &buffer_pool_instances_[buffer_pool_instances_index];
 }
 
@@ -77,7 +77,7 @@ Page *ParallelBufferPoolManager::NewPgImp(page_id_t *page_id) {
   for (size_t i = 0; i < num_instances_; ++i) {
     BufferPoolManager *bpm = &buffer_pool_instances_[start_search_index_];
     p = bpm->NewPgImp(page_id);
-    if (p) {
+    if (p != nullptr) {
       start_search_index_ = (start_search_index_ + 1) % num_instances_;
       return p;
     }

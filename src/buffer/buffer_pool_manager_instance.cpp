@@ -81,7 +81,7 @@ void BufferPoolManagerInstance::FlushAllPgsImp() {
   // You can do it!
 
   for (size_t i = 0; i < pool_size_; ++i) {
-    // TODO 这里要不要开多个线程并发进行？否则这就是串行的Flush，后面的会可能会被前面的拖住。
+    // TODO(ftw) 这里要不要开多个线程并发进行？否则这就是串行的Flush，后面的会可能会被前面的拖住。
     pages_[i].RLatch();
     if (pages_[i].GetPageId() != INVALID_PAGE_ID && pages_[i].IsDirty()) {
       disk_manager_->WritePage(pages_[i].GetPageId(), pages_[i].GetData());
@@ -110,7 +110,7 @@ Page *BufferPoolManagerInstance::NewPgImp(page_id_t *page_id) {
     return nullptr;
   }
 
-  //应该先判断是否还有空间，再来调用AllocatePage(),因为这个函数会使page id变大
+  // 应该先判断是否还有空间，再来调用AllocatePage(),因为这个函数会使page id变大
   *page_id = AllocatePage();
 
   pages_[new_frame_id].WLatch();
@@ -163,7 +163,7 @@ Page *BufferPoolManagerInstance::FetchPgImp(page_id_t page_id) {
   frame_id_t frame_id;
   if (!GetAnFrame(&frame_id)) {
     LOG_DEBUG("Get An frame fail");
-    return nullptr;  //如果既没有free page也无法从lru从剔除页面，就返回nullptr
+    return nullptr;  // 如果既没有free page也无法从lru从剔除页面，就返回nullptr
   }
   page_table_latch_.lock();
   page_table_[page_id] = frame_id;
@@ -204,7 +204,7 @@ bool BufferPoolManagerInstance::DeletePgImp(page_id_t page_id) {
   pages_[frame_id].RUnlatch();
 
   page_table_latch_.lock();
-  page_table_.erase(page_id);  //这一步必须在GetPinCount()<= 0判断之后才可以做
+  page_table_.erase(page_id);  // 这一步必须在GetPinCount()<= 0判断之后才可以做
   page_table_latch_.unlock();
 
   pages_[frame_id].WLatch();
@@ -236,8 +236,7 @@ bool BufferPoolManagerInstance::UnpinPgImp(page_id_t page_id, bool is_dirty) {
    * Unpin到0时就可以加入到lru中了。
    */
   pages_[frame_id].WLatch();
-  pages_[frame_id].is_dirty_ =
-      pages_[frame_id].is_dirty_ || is_dirty;  // TODO   = pages_[frame_id].is_dirty_ || is_dirty
+  pages_[frame_id].is_dirty_ = pages_[frame_id].is_dirty_ || is_dirty;
   --pages_[frame_id].pin_count_;
   if (pages_[frame_id].GetPinCount() == 0) {
     replacer_->Unpin(frame_id);
@@ -246,7 +245,7 @@ bool BufferPoolManagerInstance::UnpinPgImp(page_id_t page_id, bool is_dirty) {
   return true;
 }
 
-//根据这里的实现可以知道各个BP实例管理的page id规律
+// 根据这里的实现可以知道各个BP实例管理的page id规律
 //  BPI:         0           1          2
 //  pageID:   0,3,6...     1,4,7...    2,5,8...
 page_id_t BufferPoolManagerInstance::AllocatePage() {
@@ -263,7 +262,7 @@ void BufferPoolManagerInstance::ValidatePageId(const page_id_t page_id) const {
 bool BufferPoolManagerInstance::GetFrameFromFreeList(frame_id_t *frame_id) {
   this->free_list_latch_.lock();
 
-  if (free_list_.size() <= 0) {
+  if (free_list_.empty()) {
     this->free_list_latch_.unlock();
     return false;
   }
@@ -288,7 +287,7 @@ bool BufferPoolManagerInstance::GetAnFrame(frame_id_t *frame_id) {
     if (!replacer_->Victim(frame_id)) {
       return false;
     }
-    //将lru释放出来的page写回磁盘
+    // 将lru释放出来的page写回磁盘
     if (!FlushPgImp(pages_[*frame_id].GetPageId())) {
       return false;
     }
@@ -300,7 +299,7 @@ bool BufferPoolManagerInstance::GetAnFrame(frame_id_t *frame_id) {
   return true;
 }
 
-void BufferPoolManagerInstance::ResetFrameMetadata(const frame_id_t frame_id, page_id_t page_id) {
+void BufferPoolManagerInstance::ResetFrameMetadata(frame_id_t frame_id, page_id_t page_id) {
   pages_[frame_id].ResetMemory();
   pages_[frame_id].page_id_ = page_id;
   pages_[frame_id].is_dirty_ = false;
