@@ -66,9 +66,6 @@ class LRUReplacer : public Replacer {
   /**HashTable*/
   HashTable hash_table_{};
 
-  std::mutex list_latch_;
-  std::mutex hash_table_latch_;
-
   std::mutex latch_;
 };
 

@@ -50,21 +50,22 @@ BufferPoolManagerInstance::~BufferPoolManagerInstance() {
 bool BufferPoolManagerInstance::FlushPgImp(page_id_t page_id) {
   // Make sure you call DiskManager::WritePage!
 
-  page_table_latch_.lock();
+  latch_.lock();
   if (page_table_.find(page_id) == page_table_.end()) {
-    LOG_WARN("There is no page of oage_id=%d", page_id);
-    page_table_latch_.unlock();
+    latch_.unlock();
     return false;
   }
   frame_id_t frame_id = page_table_[page_id];
-  page_table_latch_.unlock();
 
-  return FlushFrameDir(frame_id);
+  bool res = FlushFrameDir(frame_id);
+  // 最后释放锁，以防还没flush就有delete请求
+  latch_.unlock();
+  return res;
 }
 
 void BufferPoolManagerInstance::FlushAllPgsImp() {
   // You can do it!
-
+  latch_.lock();
   for (size_t i = 0; i < pool_size_; ++i) {
     // TODO(ftw) 这里要不要开多个线程并发进行？否则这就是串行的Flush，后面的会可能会被前面的拖住。
     pages_[i].RLatch();
@@ -73,6 +74,7 @@ void BufferPoolManagerInstance::FlushAllPgsImp() {
     }
     pages_[i].RUnlatch();
   }
+  latch_.unlock();
 }
 
 /**
@@ -90,10 +92,10 @@ Page *BufferPoolManagerInstance::NewPgImp(page_id_t *page_id) {
   /**
    * 先从BP中腾出一个frame
    */
-  page_table_latch_.lock();
+  latch_.lock();
   frame_id_t new_frame_id;
   if (!GetAnFrame(&new_frame_id)) {
-    page_table_latch_.unlock();
+    latch_.unlock();
     return nullptr;
   }
 
@@ -106,7 +108,7 @@ Page *BufferPoolManagerInstance::NewPgImp(page_id_t *page_id) {
   // replacer_->Pin(new_frame_id);    起初该frame并不在lru中，所以不需要Pin
   pages_[new_frame_id].WUnlatch();
   page_table_[*page_id] = new_frame_id;
-  page_table_latch_.unlock();
+  latch_.unlock();
   return &pages_[new_frame_id];
 }
 
@@ -127,7 +129,7 @@ Page *BufferPoolManagerInstance::FetchPgImp(page_id_t page_id) {
   /**查看这个page_id是否在自己buffer pool中
    * 如果不在，就要去磁盘中取。
    */
-  page_table_latch_.lock();
+  latch_.lock();
   if (page_table_.find(page_id) != page_table_.end()) {
     frame_id_t frame_id = page_table_[page_id];
     Page *p = &pages_[frame_id];
@@ -135,7 +137,7 @@ Page *BufferPoolManagerInstance::FetchPgImp(page_id_t page_id) {
     ++p->pin_count_;
     p->WUnlatch();
     replacer_->Pin(frame_id);
-    page_table_latch_.unlock();
+    latch_.unlock();
     return p;
   }
 
@@ -145,7 +147,7 @@ Page *BufferPoolManagerInstance::FetchPgImp(page_id_t page_id) {
   frame_id_t frame_id;
   if (!GetAnFrame(&frame_id)) {
     LOG_DEBUG("Get An frame fail");
-    page_table_latch_.unlock();
+    latch_.unlock();
     return nullptr;  // 如果既没有free page也无法从lru从剔除页面，就返回nullptr
   }
 
@@ -157,7 +159,7 @@ Page *BufferPoolManagerInstance::FetchPgImp(page_id_t page_id) {
   pages_[frame_id].WUnlatch();
 
   page_table_[page_id] = frame_id;
-  page_table_latch_.unlock();
+  latch_.unlock();
   return &pages_[frame_id];
 }
 
@@ -171,9 +173,9 @@ bool BufferPoolManagerInstance::DeletePgImp(page_id_t page_id) {
   // 1.   If P does not exist, return true.
   // 2.   If P exists, but has a non-zero pin-count, return false. Someone is using the page.
   // 3.   Otherwise, P can be deleted. Remove P from the page table, reset its metadata and return it to the free list.
-  page_table_latch_.lock();
+  latch_.lock();
   if (page_table_.find(page_id) == page_table_.end()) {
-    page_table_latch_.unlock();
+    latch_.unlock();
     return true;
   }
   frame_id_t frame_id = page_table_[page_id];
@@ -181,7 +183,7 @@ bool BufferPoolManagerInstance::DeletePgImp(page_id_t page_id) {
   pages_[frame_id].RLatch();
   if (pages_[frame_id].GetPinCount() > 0) {
     pages_[frame_id].RUnlatch();
-    page_table_latch_.unlock();
+    latch_.unlock();
     return false;
   }
   pages_[frame_id].RUnlatch();
@@ -190,27 +192,27 @@ bool BufferPoolManagerInstance::DeletePgImp(page_id_t page_id) {
   ResetFrameMetadata(frame_id, INVALID_PAGE_ID);
   pages_[frame_id].WUnlatch();
 
-  PutFrameToFreeList(frame_id);
+  this->free_list_.emplace_back(frame_id);
 
   page_table_.erase(page_id);  // 这一步必须在GetPinCount()<= 0判断之后才可以做
-  page_table_latch_.unlock();
+  latch_.unlock();
   return true;
 }
 
 bool BufferPoolManagerInstance::UnpinPgImp(page_id_t page_id, bool is_dirty) {
-  page_table_latch_.lock();
+  latch_.lock();
 
   if (page_table_.find(page_id) == page_table_.end()) {
     LOG_WARN("The page id isn't in BP!");
-    page_table_latch_.unlock();
+    latch_.unlock();
     return false;
   }
   frame_id_t frame_id = page_table_[page_id];
-  page_table_latch_.unlock();
 
   pages_[frame_id].WLatch();
   if (pages_[frame_id].GetPinCount() <= 0) {
     pages_[frame_id].WUnlatch();
+    latch_.unlock();
     return false;
   }
 
@@ -223,6 +225,7 @@ bool BufferPoolManagerInstance::UnpinPgImp(page_id_t page_id, bool is_dirty) {
     replacer_->Unpin(frame_id);
   }
   pages_[frame_id].WUnlatch();
+  latch_.unlock();
   return true;
 }
 
@@ -241,24 +244,12 @@ void BufferPoolManagerInstance::ValidatePageId(const page_id_t page_id) const {
 }
 
 bool BufferPoolManagerInstance::GetFrameFromFreeList(frame_id_t *frame_id) {
-  this->free_list_latch_.lock();
-
   if (free_list_.empty()) {
-    this->free_list_latch_.unlock();
     return false;
   }
   *frame_id = free_list_.front();
   free_list_.pop_front();
-
-  this->free_list_latch_.unlock();
-
   return true;
-}
-
-void BufferPoolManagerInstance::PutFrameToFreeList(frame_id_t frame_id) {
-  this->free_list_latch_.lock();
-  this->free_list_.emplace_back(frame_id);
-  this->free_list_latch_.unlock();
 }
 
 // 调用这个函数前后必须对page_table_加锁
@@ -285,12 +276,6 @@ bool BufferPoolManagerInstance::FlushFrameDir(const frame_id_t frame_id) {
     p->RUnlatch();
     return false;
   }
-  // if (p->GetPinCount() > 0) {
-  //   p->RUnlatch();
-  //   LOG_WARN("flush page to disk false because page's pin_count != 0");
-  //   return false;
-  // }
-
   if (p->IsDirty()) {
     disk_manager_->WritePage(p->GetPageId(), p->GetData());
   }
