@@ -68,6 +68,8 @@ class LRUReplacer : public Replacer {
 
   std::mutex list_latch_;
   std::mutex hash_table_latch_;
+
+  std::mutex latch_;
 };
 
 }  // namespace bustub

@@ -16,7 +16,7 @@ namespace bustub {
 
 ParallelBufferPoolManager::ParallelBufferPoolManager(size_t num_instances, size_t pool_size, DiskManager *disk_manager,
                                                      LogManager *log_manager)
-    : num_instances_(num_instances) {
+    : num_instances_(num_instances), pool_size_(pool_size) {
   // Allocate and create individual BufferPoolManagerInstances
   std::allocator<BufferPoolManagerInstance> alloca;
   buffer_pool_instances_ = alloca.allocate(num_instances);
@@ -39,7 +39,7 @@ ParallelBufferPoolManager::~ParallelBufferPoolManager() {
 
 size_t ParallelBufferPoolManager::GetPoolSize() {
   // Get size of all BufferPoolManagerInstances
-  return num_instances_;
+  return num_instances_ * pool_size_;
 }
 
 BufferPoolManager *ParallelBufferPoolManager::GetBufferPoolManager(page_id_t page_id) {

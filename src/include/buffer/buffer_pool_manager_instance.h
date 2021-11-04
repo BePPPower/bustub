@@ -150,6 +150,7 @@ class BufferPoolManagerInstance : public BufferPoolManager {
   bool GetFrameFromFreeList(frame_id_t *new_frame_id);
   void PutFrameToFreeList(frame_id_t frame_id);
   bool GetAnFrame(frame_id_t *frame_id);
+  bool FlushFrameDir(frame_id_t frame_id);
   void ResetFrameMetadata(frame_id_t frame_id, page_id_t page_id);
 };
 }  // namespace bustub

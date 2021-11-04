@@ -81,13 +81,6 @@ void LRUReplacer::Remove(frame_id_t frame_id) {
   list_latch_.unlock();
 }
 
-// void LRUReplacer::Flush(frame_id_t frame_id) {
-//   Remove(frame_id);
-//   list_.emplace_back(frame_id);
-//   auto it = prev(list_.cend());
-//   hash_table_.insert(std::pair<frame_id_t, LinkList::const_iterator>{frame_id, it});
-// }
-
 size_t LRUReplacer::Size() {
   list_latch_.lock();
   size_t size = list_.size();
