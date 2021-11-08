@@ -138,6 +138,10 @@ class HashTableBucketPage {
   void PrintBucket();
 
  private:
+  bool GetBitMapIndex(uint32_t bucket_idx, uint32_t *arrary_idx, uint32_t *bit_idx) const;
+  // type=0代表修改occupied_数组，type=1代表修改readable_数组
+  void SetZeroBit(uint32_t arrary_idx, uint8_t bit_idx, uint32_t type);
+  void SetOneBit(uint32_t arrary_idx, uint8_t bit_idx, uint32_t type);
   //  For more on BUCKET_ARRAY_SIZE see storage/page/hash_table_page_defs.h
   char occupied_[(BUCKET_ARRAY_SIZE - 1) / 8 + 1];
   // 0 if tombstone/brand new (never occupied), 1 otherwise.

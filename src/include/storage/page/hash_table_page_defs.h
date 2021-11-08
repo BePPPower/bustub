@@ -42,3 +42,8 @@
  * to maintain the occupied and readable flags for a key value pair.
  */
 #define BUCKET_ARRAY_SIZE (4 * PAGE_SIZE / (4 * sizeof(MappingType) + 1))
+
+#define FULL_BYTE 255
+#define EMPTY_BYTE 0
+#define OCCUPIED_ARRARY 0
+#define READABLE_ARRARY 1
