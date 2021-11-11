@@ -29,10 +29,8 @@ uint32_t HashTableDirectoryPage::GetGlobalDepth() { return global_depth_; }
 
 uint32_t HashTableDirectoryPage::GetGlobalDepthMask() {
   uint32_t res = 0x00000000;
-  uint32_t tmp = 0x00000001;
   for (uint32_t i = 0; i < global_depth_; ++i) {
-    tmp <<= i;
-    res += tmp;
+    res += (1 << i);
   }
   return res;
 }
@@ -40,10 +38,8 @@ uint32_t HashTableDirectoryPage::GetGlobalDepthMask() {
 uint32_t HashTableDirectoryPage::GetLocalDepthMask(uint32_t bucket_idx) {
   uint32_t local_depth = GetLocalDepth(bucket_idx);
   uint32_t res = 0x00000000;
-  uint32_t tmp = 0x00000001;
   for (uint32_t i = 0; i < local_depth; ++i) {
-    tmp <<= i;
-    res += tmp;
+    res += (1 << i);
   }
   return res;
 }
@@ -97,7 +93,16 @@ void HashTableDirectoryPage::DecrLocalDepth(uint32_t bucket_idx) {
   --local_depths_[index];
 }
 
-uint32_t HashTableDirectoryPage::GetLocalHighBit(uint32_t bucket_idx) { return 0; }
+uint32_t HashTableDirectoryPage::GetLocalHighBit(uint32_t bucket_idx) {
+  auto local_depth_mask = GetLocalDepthMask(bucket_idx);
+  return bucket_idx & local_depth_mask;
+}
+
+void HashTableDirectoryPage::InitDirectPage() {
+  memset(local_depths_, 0, sizeof(local_depths_));
+  //这里可以用memset的原因是 INVALID_PAGE_ID=-1 , -1的补码是全1，所以对每一个字节填充1最后的 int32就是-1
+  memset(bucket_page_ids_, INVALID_PAGE_ID, sizeof(bucket_page_ids_));
+}
 
 /**
  * VerifyIntegrity - Use this for debugging but **DO NOT CHANGE**

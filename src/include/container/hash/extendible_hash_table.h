@@ -144,7 +144,8 @@ class ExtendibleHashTable {
    * @param value the value to insert
    * @return whether or not the insertion was successful
    */
-  bool SplitInsert(Transaction *transaction, const KeyType &key, const ValueType &value);
+  bool SplitInsert(Transaction *transaction, const KeyType &key, const ValueType &value,
+                   HashTableDirectoryPage *dir_page_ptr, HASH_TABLE_BUCKET_TYPE *bucket_page_ptr);
 
   /**
    * Optionally merges an empty bucket into it's pair.  This is called by Remove,
@@ -159,16 +160,27 @@ class ExtendibleHashTable {
    * @param key the key that was removed
    * @param value the value that was removed
    */
-  void Merge(Transaction *transaction, const KeyType &key, const ValueType &value);
+  bool Merge(Transaction *transaction, const KeyType &key, const ValueType &value,
+             HashTableDirectoryPage *dir_page_ptr);
+
+  uint32_t GetPairLatestBit(HashTableDirectoryPage *dir_page_ptr, uint32_t bucket_idx);
+
+  uint32_t GetPairIndex(HashTableDirectoryPage *dir_page_ptr, uint32_t bucket_idx);
+
+  bool Shrink(HashTableDirectoryPage *dir_page_ptr);
+
+  std::string name_;
 
   // member variables
-  page_id_t directory_page_id_;
+  page_id_t directory_page_id_ = INVALID_PAGE_ID;
   BufferPoolManager *buffer_pool_manager_;
   KeyComparator comparator_;
 
   // Readers includes inserts and removes, writers are splits and merges
   ReaderWriterLatch table_latch_;
   HashFunction<KeyType> hash_fn_;
+
+  // ftw implement
 };
 
 }  // namespace bustub

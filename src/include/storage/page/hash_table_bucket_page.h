@@ -142,6 +142,16 @@ class HashTableBucketPage {
   // type=0代表修改occupied_数组，type=1代表修改readable_数组
   void SetZeroBit(uint32_t bucket_idx, uint32_t type);
   void SetOneBit(uint32_t bucket_idx, uint32_t type);
+
+  /**
+   * occupied_,readable_数组在(BUCKET_ARRAY_SIZE - 1) / 8无法被整除的情况下，最后一个char的部分空间是可能多余的
+   * 一开始我认为 多余的情况下可能导致 buckey_page大小超过4KB
+   * 但是仔细看题要知道 HashTableBucketPage 只有那几种情况（可以看hash_table_bucket_page.cpp文件末尾),都是固定长度kv
+   * 将那几种情况逐一计算后，可以得到occupied_,readable_这两个数组最后开辟的那个char也没有溢出4096B
+   * 这也就解释了为什么 BUCKET_ARRAY_SIZE的计算公式为
+   * BUCKET_ARRAY_SIZE的计算公式为= (PAGE_SIZE)/(sizeof(MappingType) + 0.25)
+   * 因为这几种情况都不会超出 PAGE_SIZE
+   */
   //  For more on BUCKET_ARRAY_SIZE see storage/page/hash_table_page_defs.h
   char occupied_[(BUCKET_ARRAY_SIZE - 1) / 8 + 1];
   // 0 if tombstone/brand new (never occupied), 1 otherwise.
