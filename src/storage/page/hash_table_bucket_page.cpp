@@ -110,10 +110,7 @@ bool HASH_TABLE_BUCKET_TYPE::IsOccupied(uint32_t bucket_idx) const {
   if (!GetBitMapIndex(bucket_idx, &arrary_idx, &bit_idx)) {
     return false;
   }
-  if ((occupied_[arrary_idx] & (1 << bit_idx)) != 0) {
-    return true;
-  }
-  return false;
+  return (occupied_[arrary_idx] & (1 << bit_idx)) != 0;
 }
 
 template <typename KeyType, typename ValueType, typename KeyComparator>
@@ -133,10 +130,7 @@ bool HASH_TABLE_BUCKET_TYPE::IsReadable(uint32_t bucket_idx) const {
   if (!GetBitMapIndex(bucket_idx, &arrary_idx, &bit_idx)) {
     return false;
   }
-  if ((readable_[arrary_idx] & (1 << bit_idx)) != 0) {
-    return true;
-  }
-  return false;
+  return (readable_[arrary_idx] & (1 << bit_idx)) != 0;
 }
 
 template <typename KeyType, typename ValueType, typename KeyComparator>
@@ -173,7 +167,7 @@ uint32_t HASH_TABLE_BUCKET_TYPE::NumReadable() {
   return 0;
 }
 
-//这里默认了char[]初始化为全0，是否正确？
+// 这里默认了char[]初始化为全0，是否正确？
 template <typename KeyType, typename ValueType, typename KeyComparator>
 bool HASH_TABLE_BUCKET_TYPE::IsEmpty() {
   for (auto byte : occupied_) {

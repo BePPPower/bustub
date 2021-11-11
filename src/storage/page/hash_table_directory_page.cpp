@@ -65,12 +65,7 @@ uint32_t HashTableDirectoryPage::Size() {
   return 1 << global_depth_;
 }
 
-bool HashTableDirectoryPage::CanShrink() {
-  if (global_depth_ == 0) {
-    return false;
-  }
-  return true;
-}
+bool HashTableDirectoryPage::CanShrink() { return global_depth_ == 0; }
 
 uint32_t HashTableDirectoryPage::GetLocalDepth(uint32_t bucket_idx) {
   uint32_t index = bucket_idx & GetGlobalDepthMask();
@@ -100,7 +95,7 @@ uint32_t HashTableDirectoryPage::GetLocalHighBit(uint32_t bucket_idx) {
 
 void HashTableDirectoryPage::InitDirectPage() {
   memset(local_depths_, 0, sizeof(local_depths_));
-  //这里可以用memset的原因是 INVALID_PAGE_ID=-1 , -1的补码是全1，所以对每一个字节填充1最后的 int32就是-1
+  // 这里可以用memset的原因是 INVALID_PAGE_ID=-1 , -1的补码是全1，所以对每一个字节填充1最后的 int32就是-1
   memset(bucket_page_ids_, INVALID_PAGE_ID, sizeof(bucket_page_ids_));
 }
 

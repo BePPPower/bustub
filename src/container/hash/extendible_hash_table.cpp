@@ -24,9 +24,12 @@
 namespace bustub {
 
 template <typename KeyType, typename ValueType, typename KeyComparator>
-HASH_TABLE_TYPE::ExtendibleHashTable(const std::string &name, BufferPoolManager *buffer_pool_manager,
+HASH_TABLE_TYPE::ExtendibleHashTable(std::string name, BufferPoolManager *buffer_pool_manager,
                                      const KeyComparator &comparator, HashFunction<KeyType> hash_fn)
-    : name_(name), buffer_pool_manager_(buffer_pool_manager), comparator_(comparator), hash_fn_(std::move(hash_fn)) {
+    : name_{std::move(name)},
+      buffer_pool_manager_(buffer_pool_manager),
+      comparator_(comparator),
+      hash_fn_(std::move(hash_fn)) {
   //  implement me!
   Page *p = buffer_pool_manager_->NewPage(&directory_page_id_);
   if (p == nullptr) {
@@ -99,7 +102,7 @@ bool HASH_TABLE_TYPE::Insert(Transaction *transaction, const KeyType &key, const
   auto dir_page_ptr = FetchDirectoryPage();
   page_id_t bukcet_page_id = KeyToPageId(key, dir_page_ptr);
   HASH_TABLE_BUCKET_TYPE *bucket_page_ptr;
-  if (bukcet_page_id == INVALID_PAGE_ID) {  //插入extendable_hash_table第一个元素的情况下
+  if (bukcet_page_id == INVALID_PAGE_ID) {  // 插入extendable_hash_table第一个元素的情况下
     bucket_page_ptr = reinterpret_cast<HASH_TABLE_BUCKET_TYPE *>(buffer_pool_manager_->NewPage(&bukcet_page_id));
     if (bucket_page_ptr == nullptr) {
       buffer_pool_manager_->UnpinPage(directory_page_id_, false, nullptr);
