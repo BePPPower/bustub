@@ -71,7 +71,6 @@ TEST(HashTablePageTest, BucketPageSampleTest) {
   for (unsigned i = 0; i < 10; i++) {
     assert(bucket_page->Insert(i, i, IntComparator()));
   }
-
   // check for the inserted pairs
   for (unsigned i = 0; i < 10; i++) {
     EXPECT_EQ(i, bucket_page->KeyAt(i));

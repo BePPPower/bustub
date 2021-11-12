@@ -25,12 +25,15 @@ bool HASH_TABLE_BUCKET_TYPE::GetValue(KeyType key, KeyComparator cmp, std::vecto
     LOG_WARN("bucket is empty,can not get any value.");
     return false;
   }
-  for (uint32_t i = 0; i < BUCKET_ARRAY_SIZE; ++i) {
-    if (IsReadable(i) && cmp(key, KeyAt(i)) == 0) {
-      result->emplace_back(array_[i].second);
+  for (uint32_t idx = 0; idx < BUCKET_ARRAY_SIZE; ++idx) {
+    if (!IsOccupied(idx)) {
+      break;
+    }
+    if (IsReadable(idx) && cmp(key, KeyAt(idx)) == 0) {
+      result->emplace_back(array_[idx].second);
     }
   }
-  return true;
+  return result->size() != 0;
 }
 
 template <typename KeyType, typename ValueType, typename KeyComparator>
@@ -42,6 +45,12 @@ bool HASH_TABLE_BUCKET_TYPE::Insert(KeyType key, ValueType value, KeyComparator 
   bool flag = false;
   uint32_t insert_index = 0;
   for (uint32_t i = 0; i < BUCKET_ARRAY_SIZE; ++i) {
+    if (!IsOccupied(i)) {
+      if (flag == false) {
+        insert_index = i;
+      }
+      break;
+    }
     if (IsReadable(i)) {
       if (cmp(key, KeyAt(i)) == 0 && value == ValueAt(i)) {
         LOG_INFO("insert replicate key-value");
@@ -54,9 +63,9 @@ bool HASH_TABLE_BUCKET_TYPE::Insert(KeyType key, ValueType value, KeyComparator 
   }
   MappingType new_key_value = {key, value};
   array_[insert_index] = new_key_value;
-  SetOneBit(insert_index, READABLE_ARRARY);
+  SetReadable(insert_index);
   if (!IsOccupied(insert_index)) {
-    SetOneBit(insert_index, OCCUPIED_ARRARY);
+    SetOccupied(insert_index);
   }
   return true;
 }
@@ -69,10 +78,13 @@ bool HASH_TABLE_BUCKET_TYPE::Remove(KeyType key, ValueType value, KeyComparator 
   }
   bool res = false;
   for (uint32_t i = 0; i < BUCKET_ARRAY_SIZE; ++i) {
+    if (!IsOccupied(i)) {
+      break;
+    }
     if (IsReadable(i)) {
       if (cmp(key, KeyAt(i)) == 0 && value == ValueAt(i)) {
         RemoveAt(i);
-        res = true;
+        res = true;  // 这里应该可以return true. 因为 kv对是唯一的。
       }
     }
   }
@@ -100,7 +112,12 @@ void HASH_TABLE_BUCKET_TYPE::RemoveAt(uint32_t bucket_idx) {
   if (!IsReadable(bucket_idx)) {
     return;
   }
-  SetZeroBit(bucket_idx, READABLE_ARRARY);
+  uint32_t arrary_idx;
+  uint8_t bit_idx;
+  if (!GetBitMapIndex(bucket_idx, &arrary_idx, &bit_idx)) {
+    return;
+  }
+  readable_[arrary_idx] &= (~(1 << bit_idx));
 }
 
 template <typename KeyType, typename ValueType, typename KeyComparator>
@@ -120,7 +137,7 @@ void HASH_TABLE_BUCKET_TYPE::SetOccupied(uint32_t bucket_idx) {
   if (!GetBitMapIndex(bucket_idx, &arrary_idx, &bit_idx)) {
     return;
   }
-  occupied_[arrary_idx] = occupied_[arrary_idx] | (1 << bit_idx);
+  occupied_[arrary_idx] |= (1 << bit_idx);
 }
 
 template <typename KeyType, typename ValueType, typename KeyComparator>
@@ -140,38 +157,47 @@ void HASH_TABLE_BUCKET_TYPE::SetReadable(uint32_t bucket_idx) {
   if (!GetBitMapIndex(bucket_idx, &arrary_idx, &bit_idx)) {
     return;
   }
-  readable_[arrary_idx] = readable_[arrary_idx] | (1 << bit_idx);
+  readable_[arrary_idx] |= (1 << bit_idx);
 }
 
 template <typename KeyType, typename ValueType, typename KeyComparator>
 bool HASH_TABLE_BUCKET_TYPE::IsFull() {
-  uint32_t i = 0;
-  // 注意索引从0开始，所以 比较到(BUCKET_ARRAY_SIZE - 1) / 8 位置
-  for (; i < (BUCKET_ARRAY_SIZE - 1) / 8; ++i) {
-    if (occupied_[i] != FULL_BYTE) {
+  for (size_t bucket_idx = 0; bucket_idx < BUCKET_ARRAY_SIZE; ++bucket_idx) {
+    if (!IsOccupied(bucket_idx)) {
+      return false;
+    }
+    if (!IsReadable(bucket_idx)) {
       return false;
     }
   }
-  for (uint32_t j = 0; j < BUCKET_ARRAY_SIZE % 8; ++j) {
-    uint32_t tmp = 1 << j;
-    if ((occupied_[i] & tmp) != tmp) {
-      return false;
-    }
-  }
-  LOG_INFO("bucket full!");
   return true;
 }
 
 template <typename KeyType, typename ValueType, typename KeyComparator>
 uint32_t HASH_TABLE_BUCKET_TYPE::NumReadable() {
-  return 0;
+  uint32_t count = 0;
+  for (size_t bucket_idx = 0; bucket_idx < BUCKET_ARRAY_SIZE; ++bucket_idx) {
+    if (!IsOccupied(bucket_idx)) {
+      break;
+    }
+    if (IsReadable(bucket_idx)) {
+      ++count;
+    }
+  }
+  return count;
 }
 
-// 这里默认了char[]初始化为全0，是否正确？
+/**
+ * 这里默认了char[]初始化为全0，是否正确？ 正确
+ * 因为bucketPage最后是要放在Page的data_数组中的，而Page的构造函数已经将data_初始化位全0
+ */
 template <typename KeyType, typename ValueType, typename KeyComparator>
 bool HASH_TABLE_BUCKET_TYPE::IsEmpty() {
-  for (auto byte : occupied_) {
-    if (byte != EMPTY_BYTE) {
+  for (size_t bucket_idx = 0; bucket_idx < BUCKET_ARRAY_SIZE; ++bucket_idx) {
+    if (!IsOccupied(bucket_idx)) {
+      break;
+    }
+    if (IsReadable(bucket_idx)) {
       return false;
     }
   }
@@ -209,34 +235,6 @@ bool HASH_TABLE_BUCKET_TYPE::GetBitMapIndex(uint32_t bucket_idx, uint32_t *arrar
   }
   *bit_idx = static_cast<uint8_t>(bucket_idx % 8);
   return true;
-}
-
-template <typename KeyType, typename ValueType, typename KeyComparator>
-void HASH_TABLE_BUCKET_TYPE::SetZeroBit(uint32_t bucket_idx, uint32_t type) {
-  uint32_t arrary_idx;
-  uint8_t bit_idx;
-  if (!GetBitMapIndex(bucket_idx, &arrary_idx, &bit_idx)) {
-    return;
-  }
-  if (type == 0) {
-    occupied_[arrary_idx] &= (~(1 << bit_idx));
-  } else {
-    readable_[arrary_idx] &= (~(1 << bit_idx));
-  }
-}
-
-template <typename KeyType, typename ValueType, typename KeyComparator>
-void HASH_TABLE_BUCKET_TYPE::SetOneBit(uint32_t bucket_idx, uint32_t type) {
-  uint32_t arrary_idx;
-  uint8_t bit_idx;
-  if (!GetBitMapIndex(bucket_idx, &arrary_idx, &bit_idx)) {
-    return;
-  }
-  if (type == 0) {
-    occupied_[arrary_idx] &= (1 << bit_idx);
-  } else {
-    readable_[arrary_idx] &= (1 << bit_idx);
-  }
 }
 
 // DO NOT REMOVE ANYTHING BELOW THIS LINE

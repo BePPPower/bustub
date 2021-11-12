@@ -153,6 +153,13 @@ class HashTableBucketPage {
    * 因为这几种情况都不会超出 PAGE_SIZE
    */
   //  For more on BUCKET_ARRAY_SIZE see storage/page/hash_table_page_defs.h
+  /**
+   * occupied_[]的作用是指明该bucket曾经最大到达什么Size。
+   * 比如说 insert 8个kv对，此时前8位occupied_就是1，后面全是0。
+   * 当删除其中3个kv时， occupied_前8位依然时1.
+   * 当去遍历、判空、判满 时，只要遍历到occupied_最大值时就可以了，而不用遍历i整个
+   * BUCKET_ARRAY_SIZE,算是一个小优化，不用每次都遍历一个bucket。
+   */
   char occupied_[(BUCKET_ARRAY_SIZE - 1) / 8 + 1];
   // 0 if tombstone/brand new (never occupied), 1 otherwise.
   char readable_[(BUCKET_ARRAY_SIZE - 1) / 8 + 1];
