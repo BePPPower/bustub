@@ -33,7 +33,7 @@ bool HASH_TABLE_BUCKET_TYPE::GetValue(KeyType key, KeyComparator cmp, std::vecto
       result->emplace_back(array_[idx].second);
     }
   }
-  return result->size() != 0;
+  return !result->empty();
 }
 
 template <typename KeyType, typename ValueType, typename KeyComparator>
@@ -46,7 +46,7 @@ bool HASH_TABLE_BUCKET_TYPE::Insert(KeyType key, ValueType value, KeyComparator 
   uint32_t insert_index = 0;
   for (uint32_t i = 0; i < BUCKET_ARRAY_SIZE; ++i) {
     if (!IsOccupied(i)) {
-      if (flag == false) {
+      if (!flag) {
         insert_index = i;
       }
       break;
@@ -54,7 +54,7 @@ bool HASH_TABLE_BUCKET_TYPE::Insert(KeyType key, ValueType value, KeyComparator 
     if (IsReadable(i)) {
       if (cmp(key, KeyAt(i)) == 0 && value == ValueAt(i)) {
         LOG_INFO("insert replicate key-value");
-        return true;
+        return false;
       }
     } else if (!flag) {
       insert_index = i;

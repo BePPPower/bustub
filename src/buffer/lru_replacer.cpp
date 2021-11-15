@@ -33,7 +33,7 @@ bool LRUReplacer::Victim(frame_id_t *frame_id) {
 void LRUReplacer::Pin(frame_id_t frame_id) {
   latch_.lock();
   if (!this->IsExist(frame_id)) {
-    LOG_WARN("Pin a page that is not exist in LRUReplacer: page-%d", frame_id);
+    // LOG_WARN("Pin a page that is not exist in LRUReplacer: page-%d", frame_id);
     latch_.unlock();
     return;
   }

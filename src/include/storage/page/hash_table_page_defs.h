@@ -44,7 +44,3 @@
 #define BUCKET_ARRAY_SIZE (4 * PAGE_SIZE / (4 * sizeof(MappingType) + 1))
 
 #define MAX_DEPTH 9
-#define FULL_BYTE 255
-#define EMPTY_BYTE 0
-#define OCCUPIED_ARRARY 0
-#define READABLE_ARRARY 1

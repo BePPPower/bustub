@@ -119,7 +119,7 @@ class ExtendibleHashTable {
    * @param dir_page a pointer to the hash table's directory page
    * @return the bucket page_id corresponding to the input key
    */
-  inline uint32_t KeyToPageId(KeyType key, HashTableDirectoryPage *dir_page);
+  inline page_id_t KeyToPageId(KeyType key, HashTableDirectoryPage *dir_page);
 
   /**
    * Fetches the directory page from the buffer pool manager.
@@ -176,11 +176,12 @@ class ExtendibleHashTable {
   BufferPoolManager *buffer_pool_manager_;
   KeyComparator comparator_;
 
+  /**
+   * 这个锁锁的其实是directoryPage的数据，包括 GlobalDepth等。
+   */
   // Readers includes inserts and removes, writers are splits and merges
   ReaderWriterLatch table_latch_;
   HashFunction<KeyType> hash_fn_;
-
-  // ftw implement
 };
 
 }  // namespace bustub
