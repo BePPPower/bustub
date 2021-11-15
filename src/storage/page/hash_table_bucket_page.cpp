@@ -53,7 +53,6 @@ bool HASH_TABLE_BUCKET_TYPE::Insert(KeyType key, ValueType value, KeyComparator 
     }
     if (IsReadable(i)) {
       if (cmp(key, KeyAt(i)) == 0 && value == ValueAt(i)) {
-        LOG_INFO("insert replicate key-value");
         return false;
       }
     } else if (!flag) {
@@ -73,7 +72,6 @@ bool HASH_TABLE_BUCKET_TYPE::Insert(KeyType key, ValueType value, KeyComparator 
 template <typename KeyType, typename ValueType, typename KeyComparator>
 bool HASH_TABLE_BUCKET_TYPE::Remove(KeyType key, ValueType value, KeyComparator cmp) {
   if (IsEmpty()) {
-    LOG_WARN("bucket is empty,can not remove anything.");
     return false;
   }
   bool res = false;
@@ -162,7 +160,7 @@ void HASH_TABLE_BUCKET_TYPE::SetReadable(uint32_t bucket_idx) {
 
 template <typename KeyType, typename ValueType, typename KeyComparator>
 bool HASH_TABLE_BUCKET_TYPE::IsFull() {
-  for (size_t bucket_idx = 0; bucket_idx < BUCKET_ARRAY_SIZE; ++bucket_idx) {
+  for (uint32_t bucket_idx = 0; bucket_idx < BUCKET_ARRAY_SIZE; ++bucket_idx) {
     if (!IsOccupied(bucket_idx)) {
       return false;
     }
@@ -193,7 +191,7 @@ uint32_t HASH_TABLE_BUCKET_TYPE::NumReadable() {
  */
 template <typename KeyType, typename ValueType, typename KeyComparator>
 bool HASH_TABLE_BUCKET_TYPE::IsEmpty() {
-  for (size_t bucket_idx = 0; bucket_idx < BUCKET_ARRAY_SIZE; ++bucket_idx) {
+  for (uint32_t bucket_idx = 0; bucket_idx < BUCKET_ARRAY_SIZE; ++bucket_idx) {
     if (!IsOccupied(bucket_idx)) {
       break;
     }

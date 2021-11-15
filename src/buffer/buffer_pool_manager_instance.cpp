@@ -146,7 +146,7 @@ Page *BufferPoolManagerInstance::FetchPgImp(page_id_t page_id) {
    */
   frame_id_t frame_id;
   if (!GetAnFrame(&frame_id)) {
-    LOG_DEBUG("Get An frame fail");
+    LOG_ERROR("Get An frame fail");
     latch_.unlock();
     return nullptr;  // 如果既没有free page也无法从lru从剔除页面，就返回nullptr
   }
