@@ -90,19 +90,14 @@ bool HASH_TABLE_TYPE::GetValue(Transaction *transaction, const KeyType &key, std
 
   Page *page = reinterpret_cast<Page *>(bucket_page);
   page->RLatch();
-  if (bucket_page->GetValue(key, comparator_, result)) {
-    page->RUnlatch();
-    buffer_pool_manager_->UnpinPage(bukcet_page_id, false, nullptr);
-    table_latch_.RUnlock();
-    buffer_pool_manager_->UnpinPage(directory_page_id_, false, nullptr);
-    return true;
-  }
+
+  bool res = bucket_page->GetValue(key, comparator_, result);
 
   page->RUnlatch();
   buffer_pool_manager_->UnpinPage(bukcet_page_id, false, nullptr);
   table_latch_.RUnlock();
   buffer_pool_manager_->UnpinPage(directory_page_id_, false, nullptr);
-  return false;
+  return res;
 }
 
 /*****************************************************************************
@@ -254,7 +249,6 @@ bool HASH_TABLE_TYPE::Remove(Transaction *transaction, const KeyType &key, const
       // 这里不用解锁，因为上面已经解了
       buffer_pool_manager_->UnpinPage(bukcet_page_id, true, nullptr);
       buffer_pool_manager_->DeletePage(bukcet_page_id);
-      // Shrink(dir_page_ptr);
     } else {
       buffer_pool_manager_->UnpinPage(bukcet_page_id, true, nullptr);
     }
@@ -314,6 +308,7 @@ bool HASH_TABLE_TYPE::Merge(Transaction *transaction, const KeyType &key, const 
 template <typename KeyType, typename ValueType, typename KeyComparator>
 bool HASH_TABLE_TYPE::Shrink(HashTableDirectoryPage *dir_page_ptr) {
   if (!dir_page_ptr->CanShrink()) {
+    LOG_DEBUG("merge success,now globaldepth=%d", dir_page_ptr->GetGlobalDepth());
     return false;
   }
   uint32_t global_depth = dir_page_ptr->GetGlobalDepth();
@@ -323,6 +318,7 @@ bool HASH_TABLE_TYPE::Shrink(HashTableDirectoryPage *dir_page_ptr) {
     }
   }
   dir_page_ptr->DecrGlobalDepth();
+  LOG_DEBUG("merge success,now globaldepth=%d", dir_page_ptr->GetGlobalDepth());
   return true;
 }
 
@@ -357,7 +353,7 @@ void HASH_TABLE_TYPE::VerifyIntegrity() {
   table_latch_.RLock();
   HashTableDirectoryPage *dir_page = FetchDirectoryPage();
   dir_page->VerifyIntegrity();
-  // dir_page->PrintDirectory();
+  dir_page->PrintDirectory();
   assert(buffer_pool_manager_->UnpinPage(directory_page_id_, false, nullptr));
   table_latch_.RUnlock();
 }
