@@ -122,7 +122,7 @@ TEST(HashTableTest, FtwTest) {
   auto *bpm = new BufferPoolManagerInstance(50, disk_manager);
   ExtendibleHashTable<int, int, IntComparator> ht("blah", bpm, IntComparator(), HashFunction<int>());
 
-  for (int i = 0; i < 20000; ++i) {
+  for (int i = 0; i < 7000; ++i) {
     ht.Insert(nullptr, i, i);
     std::vector<int> res;
     ht.GetValue(nullptr, i, &res);
@@ -132,7 +132,7 @@ TEST(HashTableTest, FtwTest) {
 
   ht.VerifyIntegrity();
 
-  for (int i = 19999; i >= 0; i--) {
+  for (int i = 0; i < 7000; i++) {
     EXPECT_TRUE(ht.Remove(nullptr, i, i));
     std::vector<int> res;
     ht.GetValue(nullptr, i, &res);

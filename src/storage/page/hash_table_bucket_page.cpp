@@ -22,7 +22,7 @@ namespace bustub {
 template <typename KeyType, typename ValueType, typename KeyComparator>
 bool HASH_TABLE_BUCKET_TYPE::GetValue(KeyType key, KeyComparator cmp, std::vector<ValueType> *result) {
   if (IsEmpty()) {
-    LOG_WARN("bucket is empty,can not get any value.");
+    // LOG_WARN("bucket is empty,can not get any value.");
     return false;
   }
   for (uint32_t idx = 0; idx < BUCKET_ARRAY_SIZE; ++idx) {
@@ -39,7 +39,7 @@ bool HASH_TABLE_BUCKET_TYPE::GetValue(KeyType key, KeyComparator cmp, std::vecto
 template <typename KeyType, typename ValueType, typename KeyComparator>
 bool HASH_TABLE_BUCKET_TYPE::Insert(KeyType key, ValueType value, KeyComparator cmp) {
   if (IsFull()) {
-    LOG_WARN("bucket is full,can not insert anything.");
+    // LOG_WARN("bucket is full,can not insert anything.");
     return false;
   }
   bool flag = false;

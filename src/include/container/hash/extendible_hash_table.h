@@ -160,8 +160,7 @@ class ExtendibleHashTable {
    * @param key the key that was removed
    * @param value the value that was removed
    */
-  bool Merge(Transaction *transaction, const KeyType &key, const ValueType &value,
-             HashTableDirectoryPage *dir_page_ptr);
+  bool Merge(Transaction *transaction, HashTableDirectoryPage *dir_page_ptr, uint32_t bukcet_page_idx);
 
   uint32_t GetPairLatestBit(HashTableDirectoryPage *dir_page_ptr, uint32_t bucket_idx);
 
