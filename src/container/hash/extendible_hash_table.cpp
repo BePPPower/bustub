@@ -242,22 +242,13 @@ bool HASH_TABLE_TYPE::Remove(Transaction *transaction, const KeyType &key, const
     return false;
   }
 
+  page->WUnlatch();
+  buffer_pool_manager_->UnpinPage(bukcet_page_id, true, nullptr);
+  table_latch_.RUnlock();
+
   uint32_t bucket_page_idx = KeyToDirectoryIndex(key, dir_page_ptr);
-  if (bucket_page_ptr->IsEmpty()) {
-    page->WUnlatch();
-    table_latch_.RUnlock();
-    if (Merge(transaction, dir_page_ptr, bucket_page_idx)) {
-      // 这里不用解锁，因为上面已经解了
-      buffer_pool_manager_->UnpinPage(bukcet_page_id, true, nullptr);
-      buffer_pool_manager_->DeletePage(bukcet_page_id);
-    } else {
-      buffer_pool_manager_->UnpinPage(bukcet_page_id, true, nullptr);
-    }
-  } else {
-    page->WUnlatch();
-    buffer_pool_manager_->UnpinPage(bukcet_page_id, true, nullptr);
-    table_latch_.RUnlock();
-  }
+  Merge(transaction, dir_page_ptr, bucket_page_idx);
+
   buffer_pool_manager_->UnpinPage(directory_page_id_, true, nullptr);
   return true;
 }
@@ -269,19 +260,21 @@ template <typename KeyType, typename ValueType, typename KeyComparator>
 bool HASH_TABLE_TYPE::Merge(Transaction *transaction, HashTableDirectoryPage *dir_page_ptr, uint32_t bukcet_page_idx) {
   table_latch_.WLock();
 
-  // auto bucket_page_id = dir_page->GetBucketPageId(dir_idx);
-  // HASH_TABLE_BUCKET_TYPE *bucket_page_ptr = FetchBucketPage(bukcet_page_id);
-  // Page *page = reinterpret_cast<Page *>(bucket_page_ptr);
-  // page->RLatch();
-  // if (!bucket_page_ptr->IsEmpty()) {
-  //   page->RUnlatch();
-  //   buffer_pool_manager_->UnpinPage(bucket_page_id, false, nullptr);
-  //   table_latch_.WUnlock();
-  //   return false;
-  // }
+  auto bucket_page_id = dir_page_ptr->GetBucketPageId(bukcet_page_idx);
+  HASH_TABLE_BUCKET_TYPE *bucket_page_ptr = FetchBucketPage(bucket_page_id);
+  Page *page = reinterpret_cast<Page *>(bucket_page_ptr);
+  page->RLatch();
+  if (!bucket_page_ptr->IsEmpty()) {
+    page->RUnlatch();
+    buffer_pool_manager_->UnpinPage(bucket_page_id, false, nullptr);
+    table_latch_.WUnlock();
+    return false;
+  }
+  page->RUnlatch();
 
   if (dir_page_ptr->GetLocalDepth(bukcet_page_idx) == 0) {
     table_latch_.WUnlock();
+    buffer_pool_manager_->UnpinPage(bucket_page_id, true, nullptr);
     return false;
   }
 
@@ -289,6 +282,7 @@ bool HASH_TABLE_TYPE::Merge(Transaction *transaction, HashTableDirectoryPage *di
   uint32_t pair_bucket_idx = GetPairIndex(dir_page_ptr, bukcet_page_idx);
   if (dir_page_ptr->GetLocalDepth(pair_bucket_idx) != bucket_local_depth) {
     table_latch_.WUnlock();
+    buffer_pool_manager_->UnpinPage(bucket_page_id, true, nullptr);
     return false;
   }
 
@@ -311,8 +305,13 @@ bool HASH_TABLE_TYPE::Merge(Transaction *transaction, HashTableDirectoryPage *di
     dir_page_ptr->DecrLocalDepth(idx);
   }
 
+  buffer_pool_manager_->UnpinPage(bucket_page_id, true, nullptr);
+  if (!buffer_pool_manager_->DeletePage(bucket_page_id)) {
+    LOG_ERROR("delete Page false bucket_page_id=%d", bucket_page_id);
+  }
   Shrink(dir_page_ptr);
   table_latch_.WUnlock();
+  Merge(transaction, dir_page_ptr, pair_bucket_idx);
   return true;
 }
 

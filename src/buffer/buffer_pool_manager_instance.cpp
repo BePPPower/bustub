@@ -182,6 +182,7 @@ bool BufferPoolManagerInstance::DeletePgImp(page_id_t page_id) {
 
   pages_[frame_id].RLatch();
   if (pages_[frame_id].GetPinCount() > 0) {
+    LOG_WARN("page_id = %d ,pincount = %d", page_id, pages_[frame_id].GetPinCount());
     pages_[frame_id].RUnlatch();
     latch_.unlock();
     return false;
