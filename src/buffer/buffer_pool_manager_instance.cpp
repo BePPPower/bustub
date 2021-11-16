@@ -68,11 +68,9 @@ void BufferPoolManagerInstance::FlushAllPgsImp() {
   latch_.lock();
   for (size_t i = 0; i < pool_size_; ++i) {
     // TODO(ftw) 这里要不要开多个线程并发进行？否则这就是串行的Flush，后面的会可能会被前面的拖住。
-    pages_[i].RLatch();
     if (pages_[i].GetPageId() != INVALID_PAGE_ID && pages_[i].IsDirty()) {
       disk_manager_->WritePage(pages_[i].GetPageId(), pages_[i].GetData());
     }
-    pages_[i].RUnlatch();
   }
   latch_.unlock();
 }
@@ -99,14 +97,11 @@ Page *BufferPoolManagerInstance::NewPgImp(page_id_t *page_id) {
     return nullptr;
   }
 
-  pages_[new_frame_id].WLatch();
-
   // 应该先判断是否还有空间，再来调用AllocatePage(),因为这个函数会使page id变大
   *page_id = AllocatePage();
   ResetFrameMetadata(new_frame_id, *page_id);
   pages_[new_frame_id].pin_count_ = 1;
   // replacer_->Pin(new_frame_id);    起初该frame并不在lru中，所以不需要Pin
-  pages_[new_frame_id].WUnlatch();
   page_table_[*page_id] = new_frame_id;
   latch_.unlock();
   return &pages_[new_frame_id];
@@ -133,9 +128,7 @@ Page *BufferPoolManagerInstance::FetchPgImp(page_id_t page_id) {
   if (page_table_.find(page_id) != page_table_.end()) {
     frame_id_t frame_id = page_table_[page_id];
     Page *p = &pages_[frame_id];
-    p->WLatch();
     ++p->pin_count_;
-    p->WUnlatch();
     replacer_->Pin(frame_id);
     latch_.unlock();
     return p;
@@ -151,12 +144,10 @@ Page *BufferPoolManagerInstance::FetchPgImp(page_id_t page_id) {
     return nullptr;  // 如果既没有free page也无法从lru从剔除页面，就返回nullptr
   }
 
-  pages_[frame_id].WLatch();
   pages_[frame_id].page_id_ = page_id;
   disk_manager_->ReadPage(page_id, pages_[frame_id].data_);
   pages_[frame_id].pin_count_ = 1;
   pages_[frame_id].is_dirty_ = false;
-  pages_[frame_id].WUnlatch();
 
   page_table_[page_id] = frame_id;
   latch_.unlock();
@@ -180,18 +171,13 @@ bool BufferPoolManagerInstance::DeletePgImp(page_id_t page_id) {
   }
   frame_id_t frame_id = page_table_[page_id];
 
-  pages_[frame_id].RLatch();
   if (pages_[frame_id].GetPinCount() > 0) {
     LOG_WARN("page_id = %d ,pincount = %d", page_id, pages_[frame_id].GetPinCount());
-    pages_[frame_id].RUnlatch();
     latch_.unlock();
     return false;
   }
-  pages_[frame_id].RUnlatch();
 
-  pages_[frame_id].WLatch();
   ResetFrameMetadata(frame_id, INVALID_PAGE_ID);
-  pages_[frame_id].WUnlatch();
 
   this->free_list_.emplace_back(frame_id);
 
@@ -210,9 +196,7 @@ bool BufferPoolManagerInstance::UnpinPgImp(page_id_t page_id, bool is_dirty) {
   }
   frame_id_t frame_id = page_table_[page_id];
 
-  pages_[frame_id].WLatch();
   if (pages_[frame_id].GetPinCount() <= 0) {
-    pages_[frame_id].WUnlatch();
     latch_.unlock();
     return false;
   }
@@ -225,7 +209,6 @@ bool BufferPoolManagerInstance::UnpinPgImp(page_id_t page_id, bool is_dirty) {
   if (pages_[frame_id].GetPinCount() == 0) {
     replacer_->Unpin(frame_id);
   }
-  pages_[frame_id].WUnlatch();
   latch_.unlock();
   return true;
 }
@@ -272,16 +255,12 @@ bool BufferPoolManagerInstance::GetAnFrame(frame_id_t *frame_id) {
 bool BufferPoolManagerInstance::FlushFrameDir(const frame_id_t frame_id) {
   Page *p = &pages_[frame_id];
 
-  p->RLatch();
   if (p->GetPageId() == INVALID_PAGE_ID) {
-    p->RUnlatch();
     return false;
   }
   if (p->IsDirty()) {
     disk_manager_->WritePage(p->GetPageId(), p->GetData());
   }
-  p->RUnlatch();
-
   return true;
 }
 
