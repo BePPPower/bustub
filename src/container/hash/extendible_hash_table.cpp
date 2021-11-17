@@ -274,10 +274,17 @@ bool HASH_TABLE_TYPE::Remove(Transaction *transaction, const KeyType &key, const
     return false;
   }
 
+  if (!bucket_page_ptr->IsEmpty()) {
+    page->WUnlatch();
+    buffer_pool_manager_->UnpinPage(bucket_page_id, true, nullptr);
+    table_latch_.RUnlock();
+    buffer_pool_manager_->UnpinPage(directory_page_id_, true, nullptr);
+    return true;
+  }
+
   page->WUnlatch();
   buffer_pool_manager_->UnpinPage(bucket_page_id, true, nullptr);
   table_latch_.RUnlock();
-
   // 缺点：每次remove调用都有带着一次merge调用，merge又是要进行加写锁的,所以还是应该再加一层判断空条件.
   uint32_t bucket_page_idx = KeyToDirectoryIndex(key, dir_page_ptr);
   Merge(transaction, dir_page_ptr, bucket_page_idx);
@@ -295,7 +302,7 @@ bool HASH_TABLE_TYPE::Merge(Transaction *transaction, HashTableDirectoryPage *di
 
   /** 这种情况是：只剩下一个0号空页面，此时两个线程并发删除其中的记录,会同时调用merge函数*/
   page_id_t bucket_page_id = dir_page_ptr->GetBucketPageId(bukcet_page_idx);
-  if (bucket_page_id == INVALID_PAGE_ID) {
+  if (bucket_page_id == INVALID_PAGE_ID || bukcet_page_idx >= dir_page_ptr->Size()) {
     table_latch_.WUnlock();
     return false;
   }
@@ -366,7 +373,7 @@ bool HASH_TABLE_TYPE::Merge(Transaction *transaction, HashTableDirectoryPage *di
 template <typename KeyType, typename ValueType, typename KeyComparator>
 bool HASH_TABLE_TYPE::Shrink(HashTableDirectoryPage *dir_page_ptr) {
   if (!dir_page_ptr->CanShrink()) {
-    LOG_DEBUG("merge success,now globaldepth=%d", dir_page_ptr->GetGlobalDepth());
+    LOG_DEBUG("now globaldepth=%d, can't shrink.", dir_page_ptr->GetGlobalDepth());
     return false;
   }
   uint32_t global_depth = dir_page_ptr->GetGlobalDepth();
@@ -376,7 +383,6 @@ bool HASH_TABLE_TYPE::Shrink(HashTableDirectoryPage *dir_page_ptr) {
     }
   }
   dir_page_ptr->DecrGlobalDepth();
-  LOG_DEBUG("merge success,now globaldepth=%d", dir_page_ptr->GetGlobalDepth());
   return true;
 }
 
