@@ -145,7 +145,7 @@ class ExtendibleHashTable {
    * @return whether or not the insertion was successful
    */
   bool SplitInsert(Transaction *transaction, const KeyType &key, const ValueType &value,
-                   HashTableDirectoryPage *dir_page_ptr, HASH_TABLE_BUCKET_TYPE *bucket_page_ptr);
+                   HashTableDirectoryPage *dir_page_ptr);
 
   /**
    * Optionally merges an empty bucket into it's pair.  This is called by Remove,
