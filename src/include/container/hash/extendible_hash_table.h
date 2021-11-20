@@ -144,8 +144,7 @@ class ExtendibleHashTable {
    * @param value the value to insert
    * @return whether or not the insertion was successful
    */
-  bool SplitInsert(Transaction *transaction, const KeyType &key, const ValueType &value,
-                   HashTableDirectoryPage *dir_page_ptr);
+  bool SplitInsert(Transaction *transaction, const KeyType &key, const ValueType &value);
 
   /**
    * Optionally merges an empty bucket into it's pair.  This is called by Remove,
@@ -160,7 +159,10 @@ class ExtendibleHashTable {
    * @param key the key that was removed
    * @param value the value that was removed
    */
-  bool Merge(Transaction *transaction, HashTableDirectoryPage *dir_page_ptr, uint32_t bukcet_page_idx);
+  bool Merge(Transaction *transaction, uint32_t bukcet_page_idx);
+
+  int TryInsert(Transaction *transaction, const KeyType &key, const ValueType &value);
+  bool RecursiveInsert(Transaction *transaction, const KeyType &key, const ValueType &value);
 
   uint32_t GetPairLatestBit(HashTableDirectoryPage *dir_page_ptr, uint32_t bucket_idx);
 
