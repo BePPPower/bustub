@@ -25,7 +25,6 @@ namespace bustub {
 
 #define FULL_INSERT 2
 #define REPEAT_INSERT 1
-#define ERROR_INSERT (-1)
 #define SUCCESS_INSERT 0
 
 template <typename KeyType, typename ValueType, typename KeyComparator>
@@ -115,49 +114,35 @@ bool HASH_TABLE_TYPE::GetValue(Transaction *transaction, const KeyType &key, std
  *****************************************************************************/
 template <typename KeyType, typename ValueType, typename KeyComparator>
 bool HASH_TABLE_TYPE::Insert(Transaction *transaction, const KeyType &key, const ValueType &value) {
-  table_latch_.WLock();
-  bool res = RecursiveInsert(transaction, key, value);
-  table_latch_.WUnlock();
-  return res;
-}
-
-template <typename KeyType, typename ValueType, typename KeyComparator>
-bool HASH_TABLE_TYPE::RecursiveInsert(Transaction *transaction, const KeyType &key, const ValueType &value) {
   int try_result = TryInsert(transaction, key, value);
   switch (try_result) {
-    case ERROR_INSERT:
-      return false;
     case SUCCESS_INSERT:
       return true;
     case REPEAT_INSERT:
       return false;
     case FULL_INSERT:
-      if (SplitInsert(transaction, key, value)) {
-        return RecursiveInsert(transaction, key, value);
+      bool f = SplitInsert(transaction, key, value);
+      if (f) {
+        return Insert(transaction, key, value);
       }
   }
-  LOG_WARN("split false");
+  LOG_WARN("Split false!");
   return false;
 }
 
 template <typename KeyType, typename ValueType, typename KeyComparator>
 int HASH_TABLE_TYPE::TryInsert(Transaction *transaction, const KeyType &key, const ValueType &value) {
+  table_latch_.RLock();
   auto dir_page_ptr = FetchDirectoryPage();
   page_id_t bukcet_page_id = KeyToPageId(key, dir_page_ptr);
   HASH_TABLE_BUCKET_TYPE *bucket_page_ptr;
   if (bukcet_page_id == INVALID_PAGE_ID) {  // 插入extendable_hash_table第一个元素的情况下
-    bucket_page_ptr =
-        reinterpret_cast<HASH_TABLE_BUCKET_TYPE *>(buffer_pool_manager_->NewPage(&bukcet_page_id)->GetData());
-    if (bucket_page_ptr == nullptr) {
-      buffer_pool_manager_->UnpinPage(directory_page_id_, false, nullptr);
-      LOG_ERROR("new one bucket error!");
-      return ERROR_INSERT;
-    }
-    auto buckect_index = KeyToDirectoryIndex(key, dir_page_ptr);
-    dir_page_ptr->SetBucketPageId(buckect_index, bukcet_page_id);
-  } else {
-    bucket_page_ptr = FetchBucketPage(bukcet_page_id);
+    table_latch_.RUnlock();
+    buffer_pool_manager_->UnpinPage(directory_page_id_, false, nullptr);
+    LOG_INFO("try insert kv to an invalid page_id");
+    return FULL_INSERT;
   }
+  bucket_page_ptr = FetchBucketPage(bukcet_page_id);
 
   int res = SUCCESS_INSERT;
 
@@ -178,21 +163,43 @@ int HASH_TABLE_TYPE::TryInsert(Transaction *transaction, const KeyType &key, con
     page->WUnlatch();
     buffer_pool_manager_->UnpinPage(bukcet_page_id, true, nullptr);  // 插入成功，所以is_dirty=true
   }
+  table_latch_.RUnlock();
   buffer_pool_manager_->UnpinPage(directory_page_id_, true, nullptr);
   return res;
 }
 
 template <typename KeyType, typename ValueType, typename KeyComparator>
 bool HASH_TABLE_TYPE::SplitInsert(Transaction *transaction, const KeyType &key, const ValueType &value) {
+  table_latch_.WLock();
   auto dir_page_ptr = FetchDirectoryPage();
   uint32_t bukcet_page_idx = KeyToDirectoryIndex(key, dir_page_ptr);
   page_id_t bucket_page_id = KeyToPageId(key, dir_page_ptr);
   if (bucket_page_id == INVALID_PAGE_ID) {
-    buffer_pool_manager_->UnpinPage(directory_page_id_, false, nullptr);
-    LOG_ERROR("Split an INVALID_PAGE_ID bucket!");
-    return false;
+    auto bucket_page_ptr =
+        reinterpret_cast<HASH_TABLE_BUCKET_TYPE *>(buffer_pool_manager_->NewPage(&bucket_page_id)->GetData());
+    dir_page_ptr->SetBucketPageId(bukcet_page_idx, bucket_page_id);
+    buffer_pool_manager_->UnpinPage(bucket_page_id, true, nullptr);  // NewPage会增加pin_count.
+    table_latch_.WUnlock();
+    buffer_pool_manager_->UnpinPage(directory_page_id_, true, nullptr);
+    if (bucket_page_ptr == nullptr) {
+      LOG_ERROR("new one bucket error!");
+      return false;
+    }
+    return true;
   }
+
   auto bucket_page_ptr = FetchBucketPage(bucket_page_id);
+
+  Page *page = reinterpret_cast<Page *>(bucket_page_ptr);
+  page->RLatch();
+  if (!bucket_page_ptr->IsFull()) {
+    page->RUnlatch();
+    buffer_pool_manager_->UnpinPage(bucket_page_id, false, nullptr);
+    table_latch_.WUnlock();
+    buffer_pool_manager_->UnpinPage(directory_page_id_, false, nullptr);
+    return true;  // 这里return true是因为回到上层函数时可以再调用Insert。
+  }
+  page->RUnlatch();
   auto buckect_local_depth = dir_page_ptr->GetLocalDepth(bukcet_page_idx);
 
   /** 判断该bucket是否到最大depth,如果lcoaldepth到达最大也就说明globaldepth到达了最大 */
@@ -200,6 +207,7 @@ bool HASH_TABLE_TYPE::SplitInsert(Transaction *transaction, const KeyType &key, 
     LOG_ERROR("GlobalDepth reach maxium!");
     buffer_pool_manager_->UnpinPage(bucket_page_id, false, nullptr);
     buffer_pool_manager_->UnpinPage(directory_page_id_, false, nullptr);
+    table_latch_.WUnlock();
     return false;
   }
 
@@ -231,6 +239,7 @@ bool HASH_TABLE_TYPE::SplitInsert(Transaction *transaction, const KeyType &key, 
   /** 分配记录 */
   new_page_ptr->WLatch();
 
+  /** 这里没有给bucket_page_ptr加锁是因为director已经加了写锁，所以一个线程会对bucket读写 */
   uint32_t pair_bucket_latest_bit = GetPairLatestBit(dir_page_ptr, bukcet_page_idx);
   for (uint32_t i = 0; i < BUCKET_ARRAY_SIZE; ++i) {
     KeyType key_tmp = bucket_page_ptr->KeyAt(i);
@@ -251,6 +260,7 @@ bool HASH_TABLE_TYPE::SplitInsert(Transaction *transaction, const KeyType &key, 
   }
   buffer_pool_manager_->UnpinPage(bucket_page_id, true, nullptr);
   buffer_pool_manager_->UnpinPage(new_page_id, true, nullptr);
+  table_latch_.WUnlock();
   buffer_pool_manager_->UnpinPage(directory_page_id_, true, nullptr);
   return true;
 }
