@@ -310,7 +310,7 @@ bool HASH_TABLE_TYPE::Remove(Transaction *transaction, const KeyType &key, const
   table_latch_.RUnlock();
   buffer_pool_manager_->UnpinPage(directory_page_id_, false, nullptr);
 
-  // 缺点：每次remove调用都有带着一次merge调用，merge又是要进行加写锁的,所以还是应该再加一层判断空条件.
+  // 每次remove调用都有带着一次merge调用，merge又是要进行加写锁的,所以还是应该再加一层判断空条件.
   uint32_t bucket_page_idx = KeyToDirectoryIndex(key, dir_page_ptr);
   Merge(transaction, bucket_page_idx);
   return true;
@@ -323,8 +323,8 @@ template <typename KeyType, typename ValueType, typename KeyComparator>
 bool HASH_TABLE_TYPE::Merge(Transaction *transaction, uint32_t bukcet_page_idx) {
   table_latch_.WLock();
   HashTableDirectoryPage *dir_page_ptr = FetchDirectoryPage();
-  /** 这种情况是：两个线程同时对同一个bucket_page_id进行merge */
   page_id_t bucket_page_id = dir_page_ptr->GetBucketPageId(bukcet_page_idx);
+  /** 这种情况是：两个线程同时对同一个bucket_page_id进行mergem,有一个线程已经merge成功了，此时另一个线程进来后发现bukcet_page_idx不存在或大于size */
   if (bucket_page_id == INVALID_PAGE_ID || bukcet_page_idx >= dir_page_ptr->Size()) {
     table_latch_.WUnlock();
     buffer_pool_manager_->UnpinPage(directory_page_id_, false, nullptr);

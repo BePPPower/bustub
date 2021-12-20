@@ -162,7 +162,6 @@ class ExtendibleHashTable {
   bool Merge(Transaction *transaction, uint32_t bukcet_page_idx);
 
   int TryInsert(Transaction *transaction, const KeyType &key, const ValueType &value);
-  bool RecursiveInsert(Transaction *transaction, const KeyType &key, const ValueType &value);
 
   uint32_t GetPairLatestBit(HashTableDirectoryPage *dir_page_ptr, uint32_t bucket_idx);
 

@@ -29,6 +29,9 @@ class TableIterator {
   friend class Cursor;
 
  public:
+  // 这里table_heap和txn_赋值为nullptr是否会有什么问题？是否会在某个赋值运算符出现地址访问错误。
+  TableIterator() : table_heap_(nullptr), tuple_(new Tuple()), txn_(nullptr){};
+
   TableIterator(TableHeap *table_heap, RID rid, Transaction *txn);
 
   TableIterator(const TableIterator &other)
@@ -48,6 +51,8 @@ class TableIterator {
 
   TableIterator operator++(int);
 
+  // 注意tuple和其他两个成员的赋值不太一样。
+  // tuple是拷贝赋值函数，是一个深拷贝过程，其他两个只是对指针进行了赋值，是一个浅拷贝过程。
   TableIterator &operator=(const TableIterator &other) {
     table_heap_ = other.table_heap_;
     *tuple_ = *other.tuple_;
