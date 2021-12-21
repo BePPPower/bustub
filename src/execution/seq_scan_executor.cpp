@@ -30,8 +30,11 @@ bool SeqScanExecutor::Next(Tuple *tuple, RID *rid) {
     *tuple = *table_iterator_;
     *rid = tuple->GetRid();
     ++table_iterator_;
-    Value res = plan_->GetPredicate()->Evaluate(tuple, &(table_info_->schema_));
-    bool is_ok = res.GetAs<bool>();
+    bool is_ok = true;
+    if (plan_->GetPredicate()) {
+      Value res = plan_->GetPredicate()->Evaluate(tuple, &(table_info_->schema_));
+      is_ok = res.GetAs<bool>();
+    }
     if (is_ok) {
       return true;
     }

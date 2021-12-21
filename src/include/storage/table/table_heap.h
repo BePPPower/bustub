@@ -52,6 +52,7 @@ class TableHeap {
 
   /**
    * Insert a tuple into the table. If the tuple is too large (>= page_size), return false.
+   * 这是说一行记录数据大小超过4KB就会插入失败，而不是说一个Page满了就插入失败
    * @param tuple tuple to insert
    * @param[out] rid the rid of the inserted tuple
    * @param txn the transaction performing the insert

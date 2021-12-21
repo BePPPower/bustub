@@ -64,8 +64,9 @@ class ExecutionEngine {
           result_set->push_back(tuple);
         }
       }
-    } catch (Exception &e) {
+    } catch (const char *msg) {
       // TODO(student): handle exceptions
+      LOG_ERROR("Happend an exception: %s", msg);
     }
 
     return true;
