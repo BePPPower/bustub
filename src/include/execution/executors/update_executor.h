@@ -72,5 +72,9 @@ class UpdateExecutor : public AbstractExecutor {
   const TableInfo *table_info_;
   /** The child executor to obtain value from */
   std::unique_ptr<AbstractExecutor> child_executor_;
+  /** (ftw)Table indexs*/
+  std::vector<IndexInfo *> indexs_;
+  /** (ftw)transcation*/
+  Transaction *transaction_;
 };
 }  // namespace bustub

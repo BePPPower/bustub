@@ -17,11 +17,37 @@ namespace bustub {
 
 UpdateExecutor::UpdateExecutor(ExecutorContext *exec_ctx, const UpdatePlanNode *plan,
                                std::unique_ptr<AbstractExecutor> &&child_executor)
-    : AbstractExecutor(exec_ctx) {}
+    : AbstractExecutor(exec_ctx), plan_(plan), child_executor_(std::move(child_executor)) {}
 
-void UpdateExecutor::Init() {}
+void UpdateExecutor::Init() {
+  Catalog *catalog = exec_ctx_->GetCatalog();
+  table_info_ = catalog->GetTable(plan_->TableOid());
+  indexs_ = catalog->GetTableIndexes(table_info_->name_);
+  transaction_ = exec_ctx_->GetTransaction();
+}
 
-bool UpdateExecutor::Next([[maybe_unused]] Tuple *tuple, RID *rid) { return false; }
+bool UpdateExecutor::Next([[maybe_unused]] Tuple *tuple, RID *rid) {
+  // 1. 调用孩子executor的Next获取到下一条要修改的Tuple，注意要用while循环
+  // 2. 用上面生成的Tuple作为参数调用GenerateUpdatedTuple来生成 update_tuple
+  // 3. 使用Updatetuple的RID来修改记录，调用TableHeap的函数
+  // 4. 修改索引：删除索引中旧值、新增新值到索引
+
+  child_executor_->Init();
+
+  while (child_executor_->Next(tuple, rid)) {
+    Tuple update_tuple = GenerateUpdatedTuple(*tuple);
+    if (!table_info_->table_->UpdateTuple(update_tuple, *rid, transaction_)) {
+      throw "Update Tuple Exception!";
+    }
+
+    for (IndexInfo *index : indexs_) {
+      index->index_->DeleteEntry(*tuple, *rid, transaction_);
+      index->index_->InsertEntry(update_tuple, *rid, transaction_);
+    }
+  }  // while
+
+  return false;
+}
 
 Tuple UpdateExecutor::GenerateUpdatedTuple(const Tuple &src_tuple) {
   const auto &update_attrs = plan_->GetUpdateAttr();
