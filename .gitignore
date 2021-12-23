@@ -71,6 +71,7 @@ m4/lt~obsolete.m4
 #m4/
 build/
 build2/
+build3/
 #*.m4
 *.o
 *.lo

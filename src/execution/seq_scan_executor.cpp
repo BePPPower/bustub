@@ -39,6 +39,9 @@ bool SeqScanExecutor::Next(Tuple *tuple, RID *rid) {
       return true;
     }
   }
+  // 这一步的目的是让rid指向一个空RID,这样上层调用函数就可以根据这个来判断是否到达Next末尾。
+  *tuple = Tuple();
+  *rid = RID();
   return false;
 }
 
