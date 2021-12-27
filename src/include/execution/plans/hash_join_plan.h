@@ -65,4 +65,40 @@ class HashJoinPlanNode : public AbstractPlanNode {
   const AbstractExpression *right_key_expression_;
 };
 
+/**
+ * ftw
+ * 为什么这两个结构体必须放在.h文件中才可以呢，如果放在SimpleHashJoinHashTable.cpp类中make会报错
+ */
+struct HashJoinKey {
+  Value key;
+  HashJoinKey(Value &&_key) : key(std::move(_key)) {}
+
+  bool operator==(const HashJoinKey &other) const {
+    if (key.CompareEquals(other.key) != CmpBool::CmpTrue) {
+      return false;
+    }
+    return true;
+  }
+};
+
+struct HashJoinValue {
+  std::vector<Value> values_;
+  HashJoinValue(std::vector<Value> &&values) : values_(std::move(values)) {}
+  const std::vector<Value> &GetValues() { return values_; }
+};
+
 }  // namespace bustub
+
+namespace std {
+template <>
+struct hash<bustub::HashJoinKey> {
+  std::size_t operator()(const bustub::HashJoinKey &hash_join_key) const noexcept {
+    size_t curr_hash = 0;
+    auto key = hash_join_key.key;
+    if (!key.IsNull()) {
+      curr_hash = bustub::HashUtil::CombineHashes(curr_hash, bustub::HashUtil::HashValue(&key));
+    }
+    return curr_hash;
+  }
+};
+}  // namespace std
