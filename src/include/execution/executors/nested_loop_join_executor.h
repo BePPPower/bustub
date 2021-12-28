@@ -70,8 +70,6 @@ class NestedLoopJoinExecutor : public AbstractExecutor {
   Tuple left_tuple_;
   /** ftw*/
   RID left_rid_;
-  /** (ftw)transcation*/
-  Transaction *transaction_;
 };
 
 }  // namespace bustub

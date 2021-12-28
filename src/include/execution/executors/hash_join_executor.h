@@ -102,13 +102,11 @@ class HashJoinExecutor : public AbstractExecutor {
    */
   void GenarateTupleValues(const Schema *schema, const Tuple &tuple, std::vector<Value> &values);
 
-  Tuple GenerateJoinTuple(const std::vector<Value> &left_row, const std::vector<Value> &right_row);
+  Tuple GenerateJoinTuple(const std::vector<Value> &left_values, const Tuple &right_tuple);
 
   /** The NestedLoopJoin plan node to be executed. */
   const HashJoinPlanNode *plan_;
 
-  /** ftw*/
-  Transaction *transaction;
   /** ftw- child plan*/
   std::unique_ptr<AbstractExecutor> left_executor_;
   std::unique_ptr<AbstractExecutor> right_executor_;

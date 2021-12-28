@@ -23,7 +23,6 @@ NestedLoopJoinExecutor::NestedLoopJoinExecutor(ExecutorContext *exec_ctx, const 
       right_executor_(std::move(right_executor)) {}
 
 void NestedLoopJoinExecutor::Init() {
-  transaction_ = exec_ctx_->GetTransaction();
   left_plan_ = plan_->GetLeftPlan();
   right_plan_ = plan_->GetRightPlan();
   left_executor_->Init();
@@ -59,36 +58,16 @@ Tuple NestedLoopJoinExecutor::GenerateJoinTuple(const Tuple &left_tuple, const T
   /** left table、right table and out tbale*/
   const Schema *schema = GetOutputSchema();
   const Schema *left_schema = left_executor_->GetOutputSchema();
-  uint32_t left_col_count = left_schema->GetColumnCount();
   const Schema *right_schema = right_executor_->GetOutputSchema();
-  uint32_t right_col_count = right_schema->GetColumnCount();
-
   std::vector<Value> values;
 
-  for (uint32_t idx = 0; idx < left_col_count; ++idx) {
-    values.emplace_back(left_tuple.GetValue(left_schema, idx));
+  const std::vector<Column> &cols = schema->GetColumns();
+  for (auto col : cols) {
+    Value value = col.GetExpr()->EvaluateJoin(&left_tuple, left_schema, &right_tuple, right_schema);
+    values.emplace_back(value);
   }
-  for (uint32_t idx = 0; idx < right_col_count; ++idx) {
-    values.emplace_back(right_tuple.GetValue(right_schema, idx));
-  }
-  return Tuple(values, schema);
 
-  // for (uint32_t idx = 0; idx < col_count; ++idx) {
-  //   Column column = schema->GetColumn(idx);
-  //   for (uint32_t left_tuple_col_idx = 0; left_tuple_col_idx < left_schema_columns.size(); ++left_tuple_col_idx) {
-  //     if (left_schema_columns[left_tuple_col_idx].GetName() == column.GetName()) {
-  //       values.emplace_back(left_tuple.GetValue(schema, idx));
-  //       break;
-  //     }
-  //   }
-  //   for (uint32_t right_tuple_col_idx = 0; right_tuple_col_idx < right_schema_columns.size(); ++right_tuple_col_idx)
-  //   {
-  //     if (right_schema_columns[right_tuple_col_idx].GetName() == column.GetName()) {
-  //       values.emplace_back(right_tuple.GetValue(schema, idx));
-  //       break;
-  //     }
-  //   }
-  // }
+  return Tuple(values, schema);
 }
 
 }  // namespace bustub

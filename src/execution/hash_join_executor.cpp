@@ -23,8 +23,6 @@ HashJoinExecutor::HashJoinExecutor(ExecutorContext *exec_ctx, const HashJoinPlan
       right_executor_(std::move(right_child)) {}
 
 void HashJoinExecutor::Init() {
-  transaction = exec_ctx_->GetTransaction();
-
   left_schema_ = left_executor_->GetOutputSchema();
   right_schema_ = right_executor_->GetOutputSchema();
 
@@ -56,7 +54,7 @@ bool HashJoinExecutor::Next(Tuple *tuple, RID *rid) {
       const std::vector<Value> &left_row = value.GetValues();
       std::vector<Value> right_row{};
       GenarateTupleValues(right_schema_, right_tuple_, right_row);
-      *tuple = GenerateJoinTuple(left_row, right_row);
+      *tuple = GenerateJoinTuple(left_row, right_tuple_);
       *rid = tuple->GetRid();
       return true;
     }
@@ -72,15 +70,16 @@ void HashJoinExecutor::GenarateTupleValues(const Schema *schema, const Tuple &tu
   }
 }
 
-Tuple HashJoinExecutor::GenerateJoinTuple(const std::vector<Value> &left_row, const std::vector<Value> &right_row) {
+Tuple HashJoinExecutor::GenerateJoinTuple(const std::vector<Value> &left_values, const Tuple &right_tuple) {
   /** left table、right table and out tbale*/
   const Schema *schema = GetOutputSchema();
+  const Schema *left_schema = left_executor_->GetOutputSchema();
+  const Schema *right_schema = right_executor_->GetOutputSchema();
+  Tuple left_tuple(left_values, left_schema);
   std::vector<Value> values;
-
-  for (auto value : left_row) {
-    values.emplace_back(value);
-  }
-  for (auto value : right_row) {
+  const std::vector<Column> &cols = schema->GetColumns();
+  for (auto col : cols) {
+    Value value = col.GetExpr()->EvaluateJoin(&left_tuple, left_schema, &right_tuple, right_schema);
     values.emplace_back(value);
   }
   return Tuple(values, schema);
