@@ -79,12 +79,16 @@ class AggregationPlanNode : public AbstractPlanNode {
 
  private:
   /** A HAVING clause expression (may be `nullptr`) */
+  /** 用于Having过滤条件*/
   const AbstractExpression *having_;
   /** The GROUP BY expressions */
+  /** 要分组的列 */
   std::vector<const AbstractExpression *> group_bys_;
   /** The aggregation expressions */
+  /** 输出的列的表达式，如 select count(col_a) 那么aggregates_的第0个元素就是相应的表达式 */
   std::vector<const AbstractExpression *> aggregates_;
   /** The aggregation types */
+  /** 输出的列的类型 */
   std::vector<AggregationType> agg_types_;
 };
 
