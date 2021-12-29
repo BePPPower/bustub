@@ -16,9 +16,30 @@
 #include <utility>
 
 #include "execution/executors/abstract_executor.h"
+#include "execution/expressions/abstract_expression.h"
 #include "execution/plans/distinct_plan.h"
 
 namespace bustub {
+
+/**
+ * ftw
+ */
+class DistinctHashTable {
+ public:
+  DistinctHashTable() {}
+
+  void InsertKey(const DistinctKey &key) { mp_[key] = true; }
+
+  bool GetKey(const DistinctKey &key) {
+    if (mp_.count(key) == 0) {
+      return false;
+    }
+    return true;
+  }
+
+ private:
+  std::unordered_map<DistinctKey, bool> mp_{};
+};
 
 /**
  * DistinctExecutor removes duplicate rows from child ouput.
@@ -49,9 +70,26 @@ class DistinctExecutor : public AbstractExecutor {
   const Schema *GetOutputSchema() override { return plan_->OutputSchema(); };
 
  private:
+  /** ftw*/
+  DistinctKey MakeDistinctKey(const Tuple *tuple, const Schema *schema) {
+    std::vector<Value> keys;
+    for (uint32_t i = 0; i < schema->GetColumnCount(); ++i) {
+      keys.emplace_back(tuple->GetValue(schema, i));
+    }
+
+    // const std::vector<Column> &cols = GetOutputSchema()->GetColumns();
+    // for (auto col : cols) {
+    //   keys.emplace_back(col.GetExpr()->Evaluate(tuple, schema));
+    // }
+
+    return DistinctKey(keys);
+  }
+
   /** The distinct plan node to be executed */
   const DistinctPlanNode *plan_;
   /** The child executor from which tuples are obtained */
   std::unique_ptr<AbstractExecutor> child_executor_;
+  /** ftw*/
+  DistinctHashTable dis_hash_table_{};
 };
 }  // namespace bustub
