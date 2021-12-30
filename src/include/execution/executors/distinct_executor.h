@@ -13,7 +13,9 @@
 #pragma once
 
 #include <memory>
+#include <unordered_map>
 #include <utility>
+#include <vector>
 
 #include "execution/executors/abstract_executor.h"
 #include "execution/expressions/abstract_expression.h"
@@ -26,16 +28,11 @@ namespace bustub {
  */
 class DistinctHashTable {
  public:
-  DistinctHashTable() {}
+  DistinctHashTable() = default;
 
   void InsertKey(const DistinctKey &key) { mp_[key] = true; }
 
-  bool GetKey(const DistinctKey &key) {
-    if (mp_.count(key) == 0) {
-      return false;
-    }
-    return true;
-  }
+  bool GetKey(const DistinctKey &key) { return mp_.count(key) != 0; }
 
  private:
   std::unordered_map<DistinctKey, bool> mp_{};

@@ -30,7 +30,7 @@ class TableIterator {
 
  public:
   // 这里table_heap和txn_赋值为nullptr是否会有什么问题？是否会在某个赋值运算符出现地址访问错误。
-  TableIterator() : table_heap_(nullptr), tuple_(new Tuple()), txn_(nullptr){};
+  TableIterator() : table_heap_(nullptr), tuple_(new Tuple()), txn_(nullptr) {}
 
   TableIterator(TableHeap *table_heap, RID rid, Transaction *txn);
 
@@ -61,9 +61,9 @@ class TableIterator {
   }
 
  private:
-  TableHeap *table_heap_;
-  Tuple *tuple_;
-  Transaction *txn_;
+  TableHeap *table_heap_{nullptr};
+  Tuple *tuple_{nullptr};
+  Transaction *txn_{nullptr};
 };
 
 }  // namespace bustub

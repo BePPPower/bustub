@@ -36,7 +36,7 @@ void HashJoinExecutor::Init() {
     Value key_value = left_expression_->EvaluateJoin(&tuple, left_schema_, nullptr, nullptr);
     HashJoinKey key(std::move(key_value));
     std::vector<Value> row;
-    GenarateTupleValues(left_schema_, tuple, row);
+    GenarateTupleValues(left_schema_, tuple, &row);
     HashJoinValue value(std::move(row));
     hash_table_.Insert(key, value);
   }
@@ -50,10 +50,10 @@ bool HashJoinExecutor::Next(Tuple *tuple, RID *rid) {
     Value right_key = right_expression_->EvaluateJoin(nullptr, nullptr, &right_tuple_, right_schema_);
     HashJoinKey key(std::move(right_key));
     HashJoinValue value({});
-    while (hash_table_.GetKeyOf(key, value)) {
+    while (hash_table_.GetKeyOf(key, &value)) {
       const std::vector<Value> &left_row = value.GetValues();
       std::vector<Value> right_row{};
-      GenarateTupleValues(right_schema_, right_tuple_, right_row);
+      GenarateTupleValues(right_schema_, right_tuple_, &right_row);
       *tuple = GenerateJoinTuple(left_row, right_tuple_);
       *rid = tuple->GetRid();
       return true;
@@ -63,10 +63,10 @@ bool HashJoinExecutor::Next(Tuple *tuple, RID *rid) {
   return false;
 }
 
-void HashJoinExecutor::GenarateTupleValues(const Schema *schema, const Tuple &tuple, std::vector<Value> &values) {
+void HashJoinExecutor::GenarateTupleValues(const Schema *schema, const Tuple &tuple, std::vector<Value> *values) {
   uint32_t col_count = schema->GetColumnCount();
   for (uint32_t idx = 0; idx < col_count; ++idx) {
-    values.emplace_back(tuple.GetValue(schema, idx));
+    values->emplace_back(tuple.GetValue(schema, idx));
   }
 }
 
@@ -76,11 +76,11 @@ Tuple HashJoinExecutor::GenerateJoinTuple(const std::vector<Value> &left_values,
   const Schema *left_schema = left_executor_->GetOutputSchema();
   const Schema *right_schema = right_executor_->GetOutputSchema();
   Tuple left_tuple(left_values, left_schema);
-  std::vector<Value> values;
+
   const std::vector<Column> &cols = schema->GetColumns();
-  for (auto col : cols) {
-    Value value = col.GetExpr()->EvaluateJoin(&left_tuple, left_schema, &right_tuple, right_schema);
-    values.emplace_back(value);
+  std::vector<Value> values(cols.size());
+  for (size_t idx = 0; idx < cols.size(); ++idx) {
+    values[idx] = cols[idx].GetExpr()->EvaluateJoin(&left_tuple, left_schema, &right_tuple, right_schema);
   }
   return Tuple(values, schema);
 }

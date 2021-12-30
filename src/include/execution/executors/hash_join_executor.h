@@ -15,6 +15,7 @@
 #include <memory>
 #include <unordered_map>
 #include <utility>
+#include <vector>
 
 #include "common/util/hash_util.h"
 #include "execution/executor_context.h"
@@ -32,7 +33,7 @@ namespace bustub {
  */
 class SimpleHashJoinHashTable {
  public:
-  SimpleHashJoinHashTable() {}
+  SimpleHashJoinHashTable() = default;
 
   void Insert(const HashJoinKey &key, const HashJoinValue &value) {
     if (mp_.count(key) == 0) {
@@ -43,11 +44,11 @@ class SimpleHashJoinHashTable {
     v.emplace_back(value);
   }
 
-  bool GetKeyOf(const HashJoinKey &key, HashJoinValue &value) {
+  bool GetKeyOf(const HashJoinKey &key, HashJoinValue *value) {
     if (mp_.count(key) == 0) {
       return false;
     }
-    if (tmp_values_.size() == 0) {
+    if (tmp_values_.empty()) {
       tmp_values_ = mp_.at(key);
       tmp_values_it_ = tmp_values_.begin();
     }
@@ -55,7 +56,7 @@ class SimpleHashJoinHashTable {
       tmp_values_.clear();
       return false;
     }
-    value = *tmp_values_it_;
+    *value = *tmp_values_it_;
     ++tmp_values_it_;
     return true;
   }
@@ -100,7 +101,7 @@ class HashJoinExecutor : public AbstractExecutor {
   /** ftw
    * @param[out] values
    */
-  void GenarateTupleValues(const Schema *schema, const Tuple &tuple, std::vector<Value> &values);
+  void GenarateTupleValues(const Schema *schema, const Tuple &tuple, std::vector<Value> *values);
 
   Tuple GenerateJoinTuple(const std::vector<Value> &left_values, const Tuple &right_tuple);
 

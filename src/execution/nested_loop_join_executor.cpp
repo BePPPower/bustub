@@ -34,7 +34,7 @@ bool NestedLoopJoinExecutor::Next(Tuple *tuple, RID *rid) {
     RID right_rid;
 
     while (right_executor_->Next(&right_tuple, &right_rid)) {
-      if (!plan_->Predicate()) {
+      if (plan_->Predicate() == nullptr) {
         throw "NestLoopJoin Exception: join predicate is nullptr";
       }
       bool res = plan_->Predicate()
@@ -58,12 +58,11 @@ Tuple NestedLoopJoinExecutor::GenerateJoinTuple(const Tuple &left_tuple, const T
   const Schema *schema = GetOutputSchema();
   const Schema *left_schema = left_executor_->GetOutputSchema();
   const Schema *right_schema = right_executor_->GetOutputSchema();
-  std::vector<Value> values;
 
   const std::vector<Column> &cols = schema->GetColumns();
-  for (auto col : cols) {
-    Value value = col.GetExpr()->EvaluateJoin(&left_tuple, left_schema, &right_tuple, right_schema);
-    values.emplace_back(value);
+  std::vector<Value> values(cols.size());
+  for (size_t idx = 0; idx < cols.size(); ++idx) {
+    values[idx] = cols[idx].GetExpr()->EvaluateJoin(&left_tuple, left_schema, &right_tuple, right_schema);
   }
 
   return Tuple(values, schema);

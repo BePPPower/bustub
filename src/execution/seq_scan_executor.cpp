@@ -29,7 +29,7 @@ bool SeqScanExecutor::Next(Tuple *tuple, RID *rid) {
   while (table_iterator_ != table_->End()) {
     Tuple next_tuple = *table_iterator_;
     ++table_iterator_;
-    if (plan_->GetPredicate()) {
+    if (plan_->GetPredicate() != nullptr) {
       bool is_ok = plan_->GetPredicate()->Evaluate(&next_tuple, &(table_info_->schema_)).GetAs<bool>();
       if (!is_ok) {
         continue;
@@ -46,10 +46,10 @@ bool SeqScanExecutor::Next(Tuple *tuple, RID *rid) {
 }
 
 Tuple SeqScanExecutor::GenerateSeqScanTuple(const Tuple *tuple, const Schema *schema) {
-  std::vector<Value> values;
   const std::vector<Column> &cols = schema->GetColumns();
-  for (auto col : cols) {
-    values.emplace_back(col.GetExpr()->Evaluate(tuple, &(table_info_->schema_)));
+  std::vector<Value> values(cols.size());
+  for (size_t idx = 0; idx < cols.size(); ++idx) {
+    values[idx] = cols[idx].GetExpr()->Evaluate(tuple, &(table_info_->schema_));
   }
   return Tuple(values, schema);
 }

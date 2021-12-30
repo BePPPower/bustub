@@ -324,7 +324,7 @@ bool HASH_TABLE_TYPE::Merge(Transaction *transaction, uint32_t bukcet_page_idx) 
   table_latch_.WLock();
   HashTableDirectoryPage *dir_page_ptr = FetchDirectoryPage();
   page_id_t bucket_page_id = dir_page_ptr->GetBucketPageId(bukcet_page_idx);
-  /** 这种情况是：两个线程同时对同一个bucket_page_id进行mergem,有一个线程已经merge成功了，此时另一个线程进来后发现bukcet_page_idx不存在或大于size */
+  /** 有一个线程已经merge成功了，此时另一个线程进来后发现bukcet_page_idx不存在或大于size */
   if (bucket_page_id == INVALID_PAGE_ID || bukcet_page_idx >= dir_page_ptr->Size()) {
     table_latch_.WUnlock();
     buffer_pool_manager_->UnpinPage(directory_page_id_, false, nullptr);

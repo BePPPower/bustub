@@ -70,20 +70,15 @@ class HashJoinPlanNode : public AbstractPlanNode {
  * 为什么这两个结构体必须放在.h文件中才可以呢，如果放在SimpleHashJoinHashTable.cpp类中make会报错
  */
 struct HashJoinKey {
-  Value key;
-  HashJoinKey(Value &&_key) : key(std::move(_key)) {}
+  Value key_;
+  explicit HashJoinKey(Value &&_key) : key_(_key) {}
 
-  bool operator==(const HashJoinKey &other) const {
-    if (key.CompareEquals(other.key) != CmpBool::CmpTrue) {
-      return false;
-    }
-    return true;
-  }
+  bool operator==(const HashJoinKey &other) const { return key_.CompareEquals(other.key_) == CmpBool::CmpTrue; }
 };
 
 struct HashJoinValue {
   std::vector<Value> values_;
-  HashJoinValue(std::vector<Value> &&values) : values_(std::move(values)) {}
+  explicit HashJoinValue(std::vector<Value> &&values) : values_(std::move(values)) {}
   const std::vector<Value> &GetValues() { return values_; }
 };
 
@@ -94,7 +89,7 @@ template <>
 struct hash<bustub::HashJoinKey> {
   std::size_t operator()(const bustub::HashJoinKey &hash_join_key) const noexcept {
     size_t curr_hash = 0;
-    auto key = hash_join_key.key;
+    auto key = hash_join_key.key_;
     if (!key.IsNull()) {
       curr_hash = bustub::HashUtil::CombineHashes(curr_hash, bustub::HashUtil::HashValue(&key));
     }

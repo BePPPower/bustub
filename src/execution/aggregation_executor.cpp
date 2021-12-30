@@ -44,7 +44,7 @@ bool AggregationExecutor::Next(Tuple *tuple, RID *rid) {
     AggregateKey key = aht_iterator_.Key();
     AggregateValue values = aht_iterator_.Val();
     ++aht_iterator_;
-    if (having_) {
+    if (having_ != nullptr) {
       bool res = having_->EvaluateAggregate(key.group_bys_, values.aggregates_).GetAs<bool>();
       if (!res) {
         continue;
@@ -62,9 +62,9 @@ const AbstractExecutor *AggregationExecutor::GetChildExecutor() const { return c
 Tuple AggregationExecutor::GenerateAggregateTuple(const std::vector<Value> &group_bys,
                                                   const std::vector<Value> &aggregates) {
   const std::vector<Column> &cols = GetOutputSchema()->GetColumns();
-  std::vector<Value> row;
-  for (auto col : cols) {
-    row.emplace_back(col.GetExpr()->EvaluateAggregate(group_bys, aggregates));
+  std::vector<Value> row(cols.size());
+  for (size_t idx = 0; idx < cols.size(); ++idx) {
+    row[idx] = cols[idx].GetExpr()->EvaluateAggregate(group_bys, aggregates);
   }
   return Tuple(row, GetOutputSchema());
 }

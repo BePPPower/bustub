@@ -12,6 +12,8 @@
 
 #pragma once
 
+#include <utility>
+#include <vector>
 #include "common/util/hash_util.h"
 #include "execution/plans/abstract_plan.h"
 
@@ -41,7 +43,7 @@ class DistinctPlanNode : public AbstractPlanNode {
 
 struct DistinctKey {
   std::vector<Value> keys_;
-  DistinctKey(std::vector<Value> keys) : keys_(keys) {}
+  explicit DistinctKey(std::vector<Value> keys) : keys_(std::move(keys)) {}
 
   bool operator==(const DistinctKey &other) const {
     for (uint32_t i = 0; i < other.keys_.size(); ++i) {

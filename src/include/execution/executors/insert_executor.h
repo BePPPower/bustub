@@ -14,6 +14,7 @@
 
 #include <memory>
 #include <utility>
+#include <vector>
 
 #include "execution/executor_context.h"
 #include "execution/executors/abstract_executor.h"
@@ -58,7 +59,7 @@ class InsertExecutor : public AbstractExecutor {
 
  private:
   /** (ftw)Insert function*/
-  void InsertTuple(Tuple &tuple, RID *rid, Transaction *txn);
+  void InsertTuple(Tuple *tuple, RID *rid, Transaction *txn);
 
   /** The insert plan node to be executed*/
   const InsertPlanNode *plan_;
