@@ -27,22 +27,31 @@ void SeqScanExecutor::Init() {
 
 bool SeqScanExecutor::Next(Tuple *tuple, RID *rid) {
   while (table_iterator_ != table_->End()) {
-    *tuple = *table_iterator_;
-    *rid = tuple->GetRid();
+    Tuple next_tuple = *table_iterator_;
     ++table_iterator_;
-    bool is_ok = true;
     if (plan_->GetPredicate()) {
-      Value res = plan_->GetPredicate()->Evaluate(tuple, &(table_info_->schema_));
-      is_ok = res.GetAs<bool>();
+      bool is_ok = plan_->GetPredicate()->Evaluate(&next_tuple, &(table_info_->schema_)).GetAs<bool>();
+      if (!is_ok) {
+        continue;
+      }
     }
-    if (is_ok) {
-      return true;
-    }
+    *tuple = GenerateSeqScanTuple(&next_tuple, GetOutputSchema());
+    *rid = next_tuple.GetRid();
+    return true;
   }
   // 这一步的目的是让rid指向一个空RID,这样上层调用函数就可以根据这个来判断是否到达Next末尾。
   *tuple = Tuple();
   *rid = RID();
   return false;
+}
+
+Tuple SeqScanExecutor::GenerateSeqScanTuple(const Tuple *tuple, const Schema *schema) {
+  std::vector<Value> values;
+  const std::vector<Column> &cols = schema->GetColumns();
+  for (auto col : cols) {
+    values.emplace_back(col.GetExpr()->Evaluate(tuple, &(table_info_->schema_)));
+  }
+  return Tuple(values, schema);
 }
 
 }  // namespace bustub
