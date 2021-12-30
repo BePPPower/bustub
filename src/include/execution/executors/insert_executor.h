@@ -58,10 +58,13 @@ class InsertExecutor : public AbstractExecutor {
 
  private:
   /** (ftw)Insert function*/
-  void InsertTuple(const Tuple &tuple, RID *rid, Transaction *txn);
+  void InsertTuple(Tuple &tuple, RID *rid, Transaction *txn);
 
   /** The insert plan node to be executed*/
   const InsertPlanNode *plan_;
+
+  /** ftw*/
+  Transaction *transaction_;
 
   /** (ftw)The child executor of the insert plan node*/
   std::unique_ptr<AbstractExecutor> child_executor_;

@@ -41,8 +41,11 @@ bool UpdateExecutor::Next([[maybe_unused]] Tuple *tuple, RID *rid) {
     }
 
     for (IndexInfo *index : indexs_) {
-      index->index_->DeleteEntry(*tuple, *rid, transaction_);
-      index->index_->InsertEntry(update_tuple, *rid, transaction_);
+      IndexMetadata *index_meta = index->index_->GetMetadata();
+      Tuple update_tuple_key =
+          update_tuple.KeyFromTuple(table_info_->schema_, *index_meta->GetKeySchema(), index_meta->GetKeyAttrs());
+      index->index_->DeleteEntry(update_tuple_key, *rid, transaction_);
+      index->index_->InsertEntry(update_tuple_key, *rid, transaction_);
     }
   }  // while
 

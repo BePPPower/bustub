@@ -23,8 +23,6 @@ NestedLoopJoinExecutor::NestedLoopJoinExecutor(ExecutorContext *exec_ctx, const 
       right_executor_(std::move(right_executor)) {}
 
 void NestedLoopJoinExecutor::Init() {
-  left_plan_ = plan_->GetLeftPlan();
-  right_plan_ = plan_->GetRightPlan();
   left_executor_->Init();
   left_executor_->Next(&left_tuple_, &left_rid_);
   right_executor_->Init();
@@ -40,7 +38,8 @@ bool NestedLoopJoinExecutor::Next(Tuple *tuple, RID *rid) {
         throw "NestLoopJoin Exception: join predicate is nullptr";
       }
       bool res = plan_->Predicate()
-                     ->EvaluateJoin(&left_tuple_, left_plan_->OutputSchema(), &right_tuple, right_plan_->OutputSchema())
+                     ->EvaluateJoin(&left_tuple_, left_executor_->GetOutputSchema(), &right_tuple,
+                                    right_executor_->GetOutputSchema())
                      .GetAs<bool>();
       if (res) {
         *tuple = GenerateJoinTuple(left_tuple_, right_tuple);

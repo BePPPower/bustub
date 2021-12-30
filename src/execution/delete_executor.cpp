@@ -40,7 +40,10 @@ bool DeleteExecutor::Next([[maybe_unused]] Tuple *tuple, RID *rid) {
     }
 
     for (IndexInfo *index : indexs_) {
-      index->index_->DeleteEntry(*tuple, *rid, transaction_);
+      IndexMetadata *index_meta = index->index_->GetMetadata();
+      Tuple delete_tuple =
+          tuple->KeyFromTuple(table_info_->schema_, *index_meta->GetKeySchema(), index_meta->GetKeyAttrs());
+      index->index_->DeleteEntry(delete_tuple, *rid, transaction_);
     }
   }
   return false;

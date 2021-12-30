@@ -24,6 +24,7 @@ void InsertExecutor::Init() {
   Catalog *catalog = exec_ctx_->GetCatalog();
   table_info_ = catalog->GetTable(plan_->TableOid());
   indexs_ = catalog->GetTableIndexes(table_info_->name_);
+  transaction_ = exec_ctx_->GetTransaction();
 }
 
 bool InsertExecutor::Next([[maybe_unused]] Tuple *tuple, RID *rid) {
@@ -31,7 +32,7 @@ bool InsertExecutor::Next([[maybe_unused]] Tuple *tuple, RID *rid) {
   if (plan_->IsRawInsert()) {
     for (auto &row : plan_->RawValues()) {
       Tuple tuple(row, &table_info_->schema_);
-      InsertTuple(tuple, rid, exec_ctx_->GetTransaction());
+      InsertTuple(tuple, rid, transaction_);
     }
   } else {
     child_executor_->Init();
@@ -39,18 +40,21 @@ bool InsertExecutor::Next([[maybe_unused]] Tuple *tuple, RID *rid) {
     Tuple tuple;
     RID rid;
     while (child_executor_->Next(&tuple, &rid)) {
-      InsertTuple(tuple, &rid, exec_ctx_->GetTransaction());
+      InsertTuple(tuple, &rid, transaction_);
     }
   }
   return false;
 }
 
-void InsertExecutor::InsertTuple(const Tuple &tuple, RID *rid, Transaction *txn) {
+void InsertExecutor::InsertTuple(Tuple &tuple, RID *rid, Transaction *txn) {
   if (!table_info_->table_->InsertTuple(tuple, rid, txn)) {
     throw "Insert Tuple Exception!";
   }
   for (IndexInfo *index : indexs_) {
-    index->index_->InsertEntry(tuple, *rid, exec_ctx_->GetTransaction());
+    IndexMetadata *index_meta = index->index_->GetMetadata();
+    Tuple insert_tuple_key =
+        tuple.KeyFromTuple(table_info_->schema_, *index_meta->GetKeySchema(), index_meta->GetKeyAttrs());
+    index->index_->InsertEntry(insert_tuple_key, *rid, transaction_);
   }
 }
 
