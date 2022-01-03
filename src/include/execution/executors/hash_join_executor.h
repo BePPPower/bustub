@@ -123,6 +123,8 @@ class HashJoinExecutor : public AbstractExecutor {
 
   Tuple right_tuple_;
   RID right_rid_;
+
+  bool is_end_ = false;
 };
 
 }  // namespace bustub

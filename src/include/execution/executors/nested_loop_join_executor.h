@@ -66,6 +66,8 @@ class NestedLoopJoinExecutor : public AbstractExecutor {
   Tuple left_tuple_;
   /** ftw*/
   RID left_rid_;
+  /** ftw*/
+  bool is_end_ = false;
 };
 
 }  // namespace bustub

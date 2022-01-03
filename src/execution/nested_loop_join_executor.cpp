@@ -24,12 +24,14 @@ NestedLoopJoinExecutor::NestedLoopJoinExecutor(ExecutorContext *exec_ctx, const 
 
 void NestedLoopJoinExecutor::Init() {
   left_executor_->Init();
-  left_executor_->Next(&left_tuple_, &left_rid_);
+  if (!left_executor_->Next(&left_tuple_, &left_rid_)) {
+    is_end_ = true;
+  }
   right_executor_->Init();
 }
 
 bool NestedLoopJoinExecutor::Next(Tuple *tuple, RID *rid) {
-  while (!(left_rid_ == RID())) {
+  while (!is_end_) {
     Tuple right_tuple;
     RID right_rid;
 
@@ -48,7 +50,9 @@ bool NestedLoopJoinExecutor::Next(Tuple *tuple, RID *rid) {
       }
     }
     right_executor_->Init();
-    left_executor_->Next(&left_tuple_, &left_rid_);
+    if (!left_executor_->Next(&left_tuple_, &left_rid_)) {
+      is_end_ = true;
+    }
   }
   return false;
 }

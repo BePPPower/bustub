@@ -42,23 +42,25 @@ void HashJoinExecutor::Init() {
   }
 
   right_executor_->Init();
-  right_executor_->Next(&right_tuple_, &right_rid_);
+  if (!right_executor_->Next(&right_tuple_, &right_rid_)) {
+    is_end_ = true;
+  }
 }
 
 bool HashJoinExecutor::Next(Tuple *tuple, RID *rid) {
-  while (!(right_rid_ == RID())) {
+  while (!is_end_) {
     Value right_key = right_expression_->EvaluateJoin(nullptr, nullptr, &right_tuple_, right_schema_);
     HashJoinKey key(std::move(right_key));
     HashJoinValue value({});
     while (hash_table_.GetKeyOf(key, &value)) {
       const std::vector<Value> &left_row = value.GetValues();
-      std::vector<Value> right_row{};
-      GenarateTupleValues(right_schema_, right_tuple_, &right_row);
       *tuple = GenerateJoinTuple(left_row, right_tuple_);
       *rid = tuple->GetRid();
       return true;
     }
-    right_executor_->Next(&right_tuple_, &right_rid_);
+    if (!right_executor_->Next(&right_tuple_, &right_rid_)) {
+      is_end_ = true;
+    }
   }
   return false;
 }
